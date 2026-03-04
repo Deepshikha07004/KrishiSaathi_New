@@ -79,7 +79,7 @@ const SignupScreen = ({ navigation }) => {
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <ImageBackground
-        source={require("../assets/bg.jpg")}
+        source={require("../assets/ricebg.jpg")}
         style={{ flex: 1 }}
         resizeMode="cover"
       >
@@ -90,7 +90,7 @@ const SignupScreen = ({ navigation }) => {
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: "rgba(223, 239, 192, 0.85)",
+            backgroundColor: "rgba(77, 77, 4, 0.3)",
           }}
         />
         <SafeAreaView style={{ flex: 1 }}>

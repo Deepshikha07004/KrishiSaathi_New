@@ -37,7 +37,7 @@ export const useLanguage = () => {
             setIsSpeaking(true);
             isAnnouncementRunningRef.current = true;
             
-            const options = { rate: 1.05, pitch: 1.3, volume: 1.0 };
+            const options = { rate: 1.05, pitch: 1.3, volume: 1.1 };
             const sequence = [
                 { text: t.en.voiceWelcome, lang: 'en' },
                 { text: t.hi.voiceWelcome, lang: 'hi' },

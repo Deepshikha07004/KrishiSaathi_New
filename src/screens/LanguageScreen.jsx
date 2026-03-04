@@ -3,10 +3,10 @@ import {
   View,
   Text,
   TouchableOpacity,
-  TextInput,
   ScrollView,
   Image,
   ImageBackground,
+  Animated,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -15,62 +15,129 @@ import * as Speech from "expo-speech";
 import { useLanguage } from "../hooks/useLanguage";
 
 const LanguageScreen = ({ navigation }) => {
-  const textInputRef = useRef(null);
-  const [keyInput, setKeyInput] = useState("");
-  const [isPaused, setIsPaused] = useState(false);
+  const scrollViewRef = useRef(null);
+  const continueButtonRef = useRef(null);
+  const [isMuted, setIsMuted] = useState(false);
+  
+  // Animation values for sound waves
+  const wave1Height = useRef(new Animated.Value(12)).current;
+  const wave2Height = useRef(new Animated.Value(20)).current;
+  const wave3Height = useRef(new Animated.Value(12)).current;
 
   const {
     selected: selectedLanguage,
     select: handleLanguageSelect,
-    handleTextEntry,
     playFullSequence: replayVoice,
     languages,
     isSpeaking,
     isAnnouncementRunningRef,
   } = useLanguage();
 
-  const handleTextInputChange = (val) => {
-    setKeyInput(val);
-    handleTextEntry(val);
-    setTimeout(() => setKeyInput(""), 500);
-  };
+  // Wave animation
+  useEffect(() => {
+    let animation1, animation2, animation3;
+    
+    if (isSpeaking && !isMuted) {
+      // Create breathing animations for waves
+      const createWaveAnimation = (waveValue, minHeight, maxHeight) => {
+        return Animated.loop(
+          Animated.sequence([
+            Animated.timing(waveValue, {
+              toValue: maxHeight,
+              duration: 200,
+              useNativeDriver: false,
+            }),
+            Animated.timing(waveValue, {
+              toValue: minHeight,
+              duration: 200,
+              useNativeDriver: false,
+            }),
+          ])
+        );
+      };
 
-  const togglePlayPause = async () => {
+      // Start animations with different patterns
+      animation1 = createWaveAnimation(wave1Height, 8, 16);
+      animation2 = createWaveAnimation(wave2Height, 14, 26);
+      animation3 = createWaveAnimation(wave3Height, 8, 16);
+      
+      // Add slight delay for wave2 to create ripple effect
+      setTimeout(() => {
+        animation1.start();
+        animation2.start();
+        animation3.start();
+      }, 100);
+    } else {
+      // Reset waves to default heights
+      wave1Height.setValue(12);
+      wave2Height.setValue(20);
+      wave3Height.setValue(12);
+    }
+
+    return () => {
+      if (animation1) animation1.stop();
+      if (animation2) animation2.stop();
+      if (animation3) animation3.stop();
+    };
+  }, [isSpeaking, isMuted]);
+
+  const toggleMute = async () => {
     try {
-      if (isSpeaking && !isPaused) {
-        // Currently speaking - pause it
+      if (!isMuted) {
+        // Mute - stop any ongoing speech
         await Speech.stop();
-        setIsPaused(true);
+        setIsMuted(true);
         if (isAnnouncementRunningRef) {
           isAnnouncementRunningRef.current = false;
         }
-      } else if (isPaused) {
-        // Was paused - resume from beginning or restart
-        setIsPaused(false);
-        await replayVoice(); // This will restart the voice
       } else {
-        // Not speaking at all - start
+        // Unmute - play the voice again
+        setIsMuted(false);
         await replayVoice();
       }
     } catch (error) {
-      console.log("Error toggling speech:", error);
+      console.log("Error toggling mute:", error);
+    }
+  };
+
+  const stopSpeech = async () => {
+    try {
+      await Speech.stop();
+      if (isAnnouncementRunningRef) {
+        isAnnouncementRunningRef.current = false;
+      }
+    } catch (error) {
+      console.log("Error stopping speech:", error);
+    }
+  };
+
+  // Simple function to scroll to continue button
+  const scrollToContinueButton = () => {
+    if (selectedLanguage && scrollViewRef.current && continueButtonRef.current) {
+      // Use measure to get the position of the continue button
+      continueButtonRef.current.measure((x, y, width, height, pageX, pageY) => {
+        // Scroll to the button's position with a small offset to show it properly
+        scrollViewRef.current?.scrollTo({
+          y: pageY - 50, // Show button with a little space above
+          animated: true,
+        });
+      });
     }
   };
 
   useEffect(() => {
-    // Reset pause state when speaking stops naturally
-    if (!isSpeaking) {
-      setIsPaused(false);
+    // Scroll when language is selected
+    if (selectedLanguage) {
+      // Small delay to ensure layout is complete
+      setTimeout(() => {
+        scrollToContinueButton();
+      }, 300);
     }
-  }, [isSpeaking]);
-
-  useEffect(() => {
-    if (textInputRef.current) textInputRef.current.focus();
-  }, []);
+  }, [selectedLanguage]);
 
   return (
     <ImageBackground
-      source={require("../assets/bg.jpg")}
+      source={require("../assets/field.jpg")}
       style={{ flex: 1 }}
       resizeMode="cover"
     >
@@ -81,34 +148,24 @@ const LanguageScreen = ({ navigation }) => {
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: "rgba(223,239,192,0.6)",
+          backgroundColor: "rgba(28, 32, 21, 0.5)",
         }}
       />
 
       <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
-        <TextInput
-          ref={textInputRef}
-          style={{ position: "absolute", width: 0, height: 0, opacity: 0 }}
-          keyboardType="number-pad"
-          value={keyInput}
-          onChangeText={handleTextInputChange}
-          maxLength={1}
-          autoFocus
-          onBlur={() => textInputRef.current?.focus()}
-        />
-
         <ScrollView
+          ref={scrollViewRef}
           contentContainerStyle={{
             flexGrow: 1,
             padding: 20,
-            justifyContent: "center",
+            paddingBottom: 40,
           }}
           showsVerticalScrollIndicator={false}
           style={{ backgroundColor: 'transparent' }}
         >
           <View style={{ alignItems: "center", marginBottom: 30 }}>
             <Image
-              source={require("../assets/main-icon.png")}
+              source={require("../assets/icon2.png")}
               style={{ width: 250, height: 250 ,marginBottom:-60}}
               resizeMode="contain"
             />
@@ -116,7 +173,7 @@ const LanguageScreen = ({ navigation }) => {
               style={{
                 fontSize: 28,
                 fontWeight: "900",
-                color: "#1b5e20",
+                color: "#d5e77c",
                 marginTop: 15,
                 textAlign: "center",
                 letterSpacing: 1,
@@ -126,87 +183,15 @@ const LanguageScreen = ({ navigation }) => {
             </Text>
           </View>
 
-          {/* PLAY/PAUSE TOGGLE BUTTON */}
-          <View style={{ 
-            alignItems: "center",
-            marginBottom: 30,
-            width: "100%",
-          }}>
-            <TouchableOpacity
-              onPress={togglePlayPause}
-              activeOpacity={0.8}
-              style={{
-                borderRadius: 60,
-                overflow: "hidden",
-                elevation: 8,
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.3,
-                shadowRadius: 5,
-                width: "80%",
-              }}
-            >
-              <LinearGradient
-                colors={
-                  isPaused ? ["#FF9800", "#F57C00", "#E65100"] :
-                  isSpeaking ? ["#66BB6A", "#43A047", "#2E7D32"] : 
-                  ["#4CAF50", "#2E7D32", "#1B5E20"]
-                }
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={{
-                  paddingVertical: 16,
-                  paddingHorizontal: 30,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <View style={{
-                  backgroundColor: "rgba(255,255,255,0.2)",
-                  borderRadius: 30,
-                  padding: 5,
-                  marginRight: 12,
-                }}>
-                  <Ionicons 
-                    name={
-                      isPaused ? "play" :
-                      isSpeaking ? "pause" : "play"
-                    } 
-                    size={24} 
-                    color="#fff" 
-                  />
-                </View>
-                <Text style={{ color: "#fff", fontWeight: "800", fontSize: 18, letterSpacing: 0.5 }}>
-                  {isPaused ? "RESUME" : isSpeaking ? "PAUSE" : "PLAY VOICE AGAIN"}
-                </Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-
-          <Text
-            style={{
-              textAlign: "center",
-              fontSize: 18,
-              fontWeight: "600",
-              marginBottom: 20,
-              color: "#1b5e20",
-              backgroundColor: "rgba(255,255,255,0.5)",
-              paddingVertical: 8,
-              paddingHorizontal: 20,
-              borderRadius: 30,
-              alignSelf: "center",
-              overflow: "hidden",
-            }}
-          >
-            Press 1, 2, or 3:
-          </Text>
+         
 
           {/* LANGUAGE CARDS */}
           {languages.map((language) => (
             <TouchableOpacity
               key={language.code}
-              onPress={() => handleLanguageSelect(language.code)}
+              onPress={() => {
+                handleLanguageSelect(language.code);
+              }}
               activeOpacity={0.7}
               style={{
                 flexDirection: "row",
@@ -294,6 +279,7 @@ const LanguageScreen = ({ navigation }) => {
           {/* SELECTION CARD */}
           {selectedLanguage && (
             <View
+              ref={continueButtonRef}
               style={{
                 marginTop: 30,
                 marginBottom: 20,
@@ -305,6 +291,7 @@ const LanguageScreen = ({ navigation }) => {
                 shadowOpacity: 0.3,
                 shadowRadius: 8,
               }}
+              collapsable={false}
             >
               <LinearGradient
                 colors={["rgba(76, 175, 80, 0.95)", "rgba(46, 125, 50, 0.95)", "rgba(27, 94, 32, 0.95)"]}
@@ -350,8 +337,7 @@ const LanguageScreen = ({ navigation }) => {
                 {/* CONTINUE BUTTON */}
                 <TouchableOpacity
                   onPress={async () => {
-                    isAnnouncementRunningRef.current = false;
-                    await Speech.stop();
+                    await stopSpeech();
                     navigation.replace("Login");
                   }}
                   activeOpacity={0.8}
@@ -397,6 +383,72 @@ const LanguageScreen = ({ navigation }) => {
             </View>
           )}
         </ScrollView>
+
+        {/* FIXED BOTTOM-LEFT MUTE/UNMUTE BUTTON WITH WAVE BARS ON RIGHT */}
+        <View style={{
+          position: 'absolute',
+          bottom: 20,
+          left: 20,
+          zIndex: 1000,
+          flexDirection: 'row',
+          alignItems: 'center',
+        }}>
+          {/* Circular Mute/Unmute Button */}
+          <TouchableOpacity
+            onPress={toggleMute}
+            activeOpacity={0.7}
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: 28,
+              backgroundColor: isMuted ? '#D32F2F' : '#2E7D32',
+              borderWidth: 2,
+              borderColor: '#FFFFFF',
+              justifyContent: 'center',
+              alignItems: 'center',
+              elevation: 8,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 5,
+            }}
+          >
+            <Ionicons 
+              name={isMuted ? "volume-mute" : "volume-high"} 
+              size={28} 
+              color="#FFFFFF" 
+            />
+          </TouchableOpacity>
+          
+          {/* Sound Wave Bars - shown only when speaking and not muted */}
+          {isSpeaking && !isMuted && (
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              marginLeft: 12,
+              gap: 2,
+            }}>
+              <Animated.View style={{
+                width: 4,
+                height: wave1Height,
+                borderRadius: 2,
+                backgroundColor: '#2E7D32',
+              }} />
+              <Animated.View style={{
+                width: 4,
+                height: wave2Height,
+                borderRadius: 2,
+                backgroundColor: '#2E7D32',
+              }} />
+              <Animated.View style={{
+                width: 4,
+                height: wave3Height,
+                borderRadius: 2,
+                backgroundColor: '#2E7D32',
+              }} />
+            </View>
+          )}
+        </View>
       </SafeAreaView>
     </ImageBackground>
   );

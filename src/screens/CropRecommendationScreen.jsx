@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import {
     View,
     Text,
@@ -9,22 +9,106 @@ import {
     Alert,
     StyleSheet,
     Dimensions,
+    isChatVisible
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import * as Speech from 'expo-speech';
 import { AppContext } from '../context/AppContext';
+import { useFocusEffect } from '@react-navigation/native';
 
 const { width, height } = Dimensions.get('window');
 
 const CropRecommendationScreen = ({ navigation }) => {
-    const { t, setChatType, setChatVisible, setPinnedMessage, weatherData, userLocation, setChatBackground } = useContext(AppContext);
+    const { t, lang, setChatType, setChatVisible, setPinnedMessage, weatherData, userLocation, setChatBackground } = useContext(AppContext);
     const [step, setStep] = useState(1);
     const [recommendations, setRecommendations] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [selectedOption, setSelectedOption] = useState(null);
+    
+    // Speaker state
+    const [isMuted, setIsMuted] = useState(false);
+    const [isSpeaking, setIsSpeaking] = useState(false);
 
     // API Base URL - Replace with your actual backend URL
     const API_BASE_URL = 'https://your-backend-api.com/api';
+
+    // Track screen focus using useFocusEffect
+    useFocusEffect(
+        React.useCallback(() => {
+            // Screen came into focus
+            console.log('Screen focused');
+            
+            return () => {
+                // Screen lost focus - immediately stop all speech
+                console.log('Screen unfocused - stopping speech');
+                Speech.stop();
+                setIsSpeaking(false);
+            };
+        }, [])
+    );
+
+    const speak = (msg) => {
+        // Don't speak if muted
+        if (isMuted) return;
+        
+        Speech.stop();
+        setIsSpeaking(true);
+        
+        Speech.speak(msg, { 
+            rate: 1.0, 
+            pitch: 1.0, 
+            language: lang,
+            onDone: () => {
+                setIsSpeaking(false);
+            },
+            onError: () => {
+                setIsSpeaking(false);
+            }
+        });
+    };
+
+    const toggleMute = () => {
+        if (!isMuted) {
+            // If unmuting and about to mute, stop any ongoing speech
+            Speech.stop();
+            setIsSpeaking(false);
+        }
+        setIsMuted(!isMuted);
+    };
+
+    // Stop speech when component unmounts
+    useEffect(() => {
+        return () => {
+            Speech.stop();
+            setIsSpeaking(false);
+        };
+    }, []);
+
+    // Stop speech when step changes
+    useEffect(() => {
+        // Stop any ongoing speech before new step
+        Speech.stop();
+        setIsSpeaking(false);
+        
+        if (isMuted) return;
+        
+        // Auto-speak when step changes
+        if (step === 1) {
+            speak(t.sownAlready);
+        } else if (step === 2) {
+            // Add other speech as needed
+        }
+    }, [step, isMuted]);
+
+    // Stop speech when chat becomes visible
+    useEffect(() => {
+        if (isChatVisible) {
+            Speech.stop();
+            setIsSpeaking(false);
+        }
+    }, [isChatVisible]);
 
     const fetchRecommendations = async () => {
         setLoading(true);
@@ -168,6 +252,9 @@ const CropRecommendationScreen = ({ navigation }) => {
         setRecommendations([]);
         setError(null);
         setSelectedOption(null);
+        Speech.stop();
+        setIsSpeaking(false);
+        setIsPaused(false);
     };
 
     const getBackgroundImage = () => {
@@ -191,9 +278,9 @@ const CropRecommendationScreen = ({ navigation }) => {
                 <View style={styles.container}>
                     {step === 1 ? (
                         <View style={styles.centerContainer}>
-                            <View style={styles.iconContainer}>
-                                <Ionicons name="help-circle-outline" size={80} color="#fff" />
-                            </View>
+                          
+                                <Ionicons name="help-circle-outline" size={90} color="#2E7D32" />
+                            
                             <Text style={styles.questionText}>{t.sownAlready}</Text>
                             <TouchableOpacity 
                                 style={styles.primaryBtn} 
@@ -276,6 +363,35 @@ const CropRecommendationScreen = ({ navigation }) => {
                             </ScrollView>
                         </View>
                     )}
+                    
+                    {/* Speaker Button - Exactly like Advisory Screen */}
+                    <View style={styles.speakerFixedContainer}>
+                        <TouchableOpacity 
+                            style={[
+                                styles.speakerButton,
+                                isMuted ? styles.mutedButton : styles.activeButton
+                            ]}
+                            onPress={toggleMute}
+                            activeOpacity={0.7}
+                        >
+                            <Ionicons
+                                name={isMuted ? "volume-mute" : "volume-high"}
+                                size={24}
+                                color="#fff"
+                            />
+                        </TouchableOpacity>
+                        
+                        {/* Wave animation on the right side when speaking */}
+                        {isSpeaking && !isMuted && (
+                            <View style={styles.waveContainer}>
+                                <View style={styles.wave1} />
+                                <View style={styles.wave2} />
+                                <View style={styles.wave3} />
+                            </View>
+                        )}
+                    </View>
+
+                    {/* Back Button for Step > 1 */}
                     {step > 1 && !loading && !error && recommendations.length > 0 && (
                         <TouchableOpacity 
                             style={styles.backButton} 
@@ -310,6 +426,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         padding: 20,
+        paddingBottom: 100, // Add padding to avoid bottom elements
     },
     backgroundImage: {
         flex: 1,
@@ -320,13 +437,9 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: 'rgba(0, 0, 0, 0.6)',
     },
-    iconContainer: {
-        marginBottom: 20,
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-        borderRadius: 50,
-        padding: 10,
-    },
+   
     questionText: {
+        marginTop: 15,
         fontSize: 24,
         fontWeight: 'bold',
         color: '#fff',
@@ -514,7 +627,7 @@ const styles = StyleSheet.create({
     backButton: {
         position: 'absolute',
         bottom: 20,
-        left: 20,
+        left: 100, // Adjusted to make space for speaker button
         backgroundColor: 'rgba(255, 255, 255, 0.95)',
         borderRadius: 25,
         elevation: 5,
@@ -523,9 +636,68 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.25,
         shadowRadius: 3.84,
         padding: 2,
+        zIndex: 999,
     },
     bottomPadding: {
         height: 60,
+    },
+    // Speaker button - Exactly like Advisory Screen
+    speakerFixedContainer: {
+        position: 'absolute',
+        bottom: 20,
+        left: 20,
+        flexDirection: 'row',
+        alignItems: 'center',
+        zIndex: 1000,
+        elevation: 10,
+    },
+    speakerButton: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: '#fff',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+    },
+    activeButton: {
+        backgroundColor: '#2E7D32', // Green when active
+    },
+    mutedButton: {
+        backgroundColor: '#D32F2F', // Red when muted
+    },
+    waveContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginLeft: 8,
+    },
+    wave1: {
+        width: 4,
+        height: 12,
+        backgroundColor: '#2E7D32',
+        marginHorizontal: 2,
+        borderRadius: 2,
+        opacity: 0.7,
+    },
+    wave2: {
+        width: 4,
+        height: 20,
+        backgroundColor: '#2E7D32',
+        marginHorizontal: 2,
+        borderRadius: 2,
+        opacity: 1,
+    },
+    wave3: {
+        width: 4,
+        height: 12,
+        backgroundColor: '#2E7D32',
+        marginHorizontal: 2,
+        borderRadius: 2,
+        opacity: 0.7,
     },
 });
 

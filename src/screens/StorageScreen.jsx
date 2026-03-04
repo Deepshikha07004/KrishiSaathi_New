@@ -53,7 +53,7 @@ const StorageScreen = () => {
                     district: location?.district || null,
                     language: lang || 'en',
                     page: pageNum,
-                    limit: 10 // Request exactly 10 items per page
+                    limit: 10
                 }),
             });
 
@@ -71,11 +71,6 @@ const StorageScreen = () => {
             
             setHasMore(data.hasMore || false);
             
-            // If we have less than 10, try to fetch more
-            if ((data.storages?.length || 0) < 10 && data.hasMore) {
-                setPage(prev => prev + 1);
-            }
-            
         } catch (error) {
             console.error('Error fetching storages:', error);
             setError('Unable to load storage facilities');
@@ -91,18 +86,9 @@ const StorageScreen = () => {
         }
     };
 
-    // Initial fetch - ensure at least 10 items
+    // Initial fetch
     useEffect(() => {
-        const loadInitialStorages = async () => {
-            await fetchStorages(1, true);
-            
-            // If we have less than 10, try to load more
-            if (storages.length < 10 && hasMore) {
-                setPage(2);
-            }
-        };
-        
-        loadInitialStorages();
+        fetchStorages(1, true);
     }, [location, lang]);
 
     // Load more when page changes
@@ -120,7 +106,7 @@ const StorageScreen = () => {
     };
 
     const loadMore = () => {
-        if (hasMore && !loadingMore && storages.length < 10) {
+        if (hasMore && !loadingMore) {
             setPage(prev => prev + 1);
         }
     };
@@ -135,7 +121,7 @@ const StorageScreen = () => {
 
     const handleNavigate = (latitude, longitude, name) => {
         if (latitude && longitude) {
-            const url = `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}&destination_place_id=${encodeURIComponent(name)}`;
+            const url = `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`;
             Linking.openURL(url);
         } else {
             Alert.alert('Location Unavailable', 'Map location not available for this facility.');
@@ -144,8 +130,17 @@ const StorageScreen = () => {
 
     const handleShare = async (item) => {
         try {
-            const message = `*${item.name}*\n\n📍 Address: ${item.address}\n📞 Phone: ${item.phone}\n💾 Capacity: ${item.capacity}\n💰 Price: ${item.price}\n⭐ Rating: ${item.rating}/5`;
-            await Sharing.shareAsync(message);
+            // Using Share API instead of Sharing
+            const message = `${item.name}\n\n📍 Address: ${item.address}\n📞 Phone: ${item.phone}\n💾 Capacity: ${item.capacity}\n💰 Price: ${item.price}\n⭐ Rating: ${item.rating}/5`;
+            
+            if (navigator.share) {
+                await navigator.share({
+                    title: item.name,
+                    message: message,
+                });
+            } else {
+                Alert.alert('Share', message);
+            }
         } catch (error) {
             console.log('Share error:', error);
         }
@@ -167,7 +162,7 @@ const StorageScreen = () => {
             <View style={styles.locationHeader}>
                 <Ionicons name="location" size={20} color="#1976D2" />
                 <Text style={styles.locationText}>
-                    {count} storage facilities near {location?.district || location?.placeName || "your area"}
+                    {count} storage facilities near {location?.district || location?.place_name || location?.city || "your area"}
                 </Text>
             </View>
         );
@@ -175,7 +170,7 @@ const StorageScreen = () => {
 
     return (
         <ImageBackground
-            source={require('../assets/truck.jpg')}
+            source={require('../assets/storagebg.jpg')}
             style={styles.backgroundImage}
             resizeMode="cover"
         >
@@ -190,8 +185,6 @@ const StorageScreen = () => {
                             onRefresh={onRefresh}
                             colors={["#2E7D32"]}
                             tintColor="#2E7D32"
-                            title="Pull to refresh"
-                            titleColor="#2E7D32"
                         />
                     }
                     onMomentumScrollEnd={loadMore}
@@ -202,13 +195,11 @@ const StorageScreen = () => {
                         <View style={styles.loadingContainer}>
                             <ActivityIndicator size="large" color="#2E7D32" />
                             <Text style={styles.loadingText}>Finding storage facilities near you...</Text>
-                            <Text style={styles.loadingSubText}>Searching for at least 10 options</Text>
                         </View>
                     ) : error ? (
                         <View style={styles.errorContainer}>
                             <Ionicons name="cloud-offline-outline" size={70} color="#f44336" />
                             <Text style={styles.errorText}>{error}</Text>
-                            <Text style={styles.errorSubText}>Please check your connection</Text>
                             <TouchableOpacity 
                                 style={styles.retryButton}
                                 onPress={onRefresh}
@@ -232,7 +223,7 @@ const StorageScreen = () => {
                             
                             {storages.map((item, index) => (
                                 <StorageCard 
-                                    key={item.id || index}
+                                    key={item.id || index.toString()}
                                     item={item}
                                     t={t}
                                     onCall={() => handleCall(item.phone)}
@@ -248,7 +239,7 @@ const StorageScreen = () => {
                                 </View>
                             )}
                             
-                            {storages.length < 10 && hasMore && !loadingMore && (
+                            {hasMore && !loadingMore && storages.length >= 10 && (
                                 <TouchableOpacity 
                                     style={styles.loadMoreButton}
                                     onPress={loadMore}
@@ -256,15 +247,6 @@ const StorageScreen = () => {
                                     <Text style={styles.loadMoreText}>Load More Facilities</Text>
                                     <Ionicons name="arrow-down" size={18} color="#2E7D32" />
                                 </TouchableOpacity>
-                            )}
-                            
-                            {storages.length >= 10 && (
-                                <View style={styles.successMessage}>
-                                    <Ionicons name="checkmark-circle" size={20} color="#2E7D32" />
-                                    <Text style={styles.successText}>
-                                        Showing {storages.length} storage facilities
-                                    </Text>
-                                </View>
                             )}
                             
                             <View style={styles.bottomPadding} />
@@ -297,7 +279,7 @@ const styles = StyleSheet.create({
     },
     overlay: {
         flex: 1,
-        backgroundColor: 'rgba(255, 255, 255, 0.85)',
+        backgroundColor: 'rgba(6, 11, 0, 0.5)',
     },
     container: {
         flex: 1,
@@ -357,11 +339,6 @@ const styles = StyleSheet.create({
         color: '#2E7D32',
         fontWeight: '500',
     },
-    loadingSubText: {
-        marginTop: 5,
-        fontSize: 14,
-        color: '#999',
-    },
     loadingMoreContainer: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -384,14 +361,8 @@ const styles = StyleSheet.create({
         color: '#f44336',
         textAlign: 'center',
         marginTop: 15,
-        fontWeight: '600',
-    },
-    errorSubText: {
-        fontSize: 14,
-        color: '#666',
-        textAlign: 'center',
-        marginTop: 5,
         marginBottom: 20,
+        fontWeight: '600',
     },
     retryButton: {
         backgroundColor: '#2E7D32',
@@ -401,10 +372,6 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         elevation: 3,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
     },
     retryButtonText: {
         color: '#fff',
@@ -464,21 +431,6 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         marginRight: 8,
-    },
-    successMessage: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 15,
-        backgroundColor: 'rgba(46, 125, 50, 0.1)',
-        borderRadius: 10,
-        marginTop: 15,
-    },
-    successText: {
-        color: '#2E7D32',
-        fontSize: 14,
-        fontWeight: '500',
-        marginLeft: 8,
     },
     bottomPadding: {
         height: 20,

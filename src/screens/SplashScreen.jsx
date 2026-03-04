@@ -16,25 +16,16 @@ const Splash = () => {
   
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const loadingWidth = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Logo fade in and scale animation
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 1000,
-        useNativeDriver: true,
-        easing: Easing.ease,
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        friction: 4,
-        tension: 40,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    // Logo fade in animation with increased duration
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 1500, // Increased from 1000 to 1500 (1.5 seconds)
+      useNativeDriver: true,
+      easing: Easing.ease,
+    }).start();
 
     // Loading bar animation
     Animated.timing(loadingWidth, {
@@ -76,11 +67,10 @@ const Splash = () => {
           justifyContent: "center", 
           alignItems: "center" 
         }}>
-          {/* Animated Logo */}
+          {/* Animated Logo with fade only */}
           <Animated.View
             style={{
               opacity: fadeAnim,
-              transform: [{ scale: scaleAnim }],
               alignItems: "center",
             }}
           >

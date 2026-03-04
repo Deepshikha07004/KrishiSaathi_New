@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import {
     View,
     Text,
@@ -12,13 +12,17 @@ import {
     SafeAreaView,
     StatusBar,
     Alert,
-    FlatList,
-    height
+    Dimensions,
+    Animated
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
+import { Audio } from 'expo-av';
+import * as FileSystem from 'expo-file-system';
 import { AppContext } from '../context/AppContext';
 import ChatMessage from './ChatMessage';
+
+const { width, height } = Dimensions.get('window');
 
 const FloatingChatbot = () => {
     const { 
@@ -34,17 +38,79 @@ const FloatingChatbot = () => {
         weatherData,
         user
     } = useContext(AppContext);
+    
     const [input, setInput] = useState('');
     const [messages, setMessages] = useState([]);
     const [isTyping, setIsTyping] = useState(false);
     const [sessionId, setSessionId] = useState(null);
     const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-    const [showHistoryMenu, setShowHistoryMenu] = useState(false);
-    const [chatSessions, setChatSessions] = useState([]);
-    const [loadingSessions, setLoadingSessions] = useState(false);
+
+    // Voice recording states
+    const [isRecording, setIsRecording] = useState(false);
+    const [recording, setRecording] = useState(null);
+    const [recordingDuration, setRecordingDuration] = useState(0);
+    const [permissionResponse, requestPermission] = Audio.usePermissions();
+    
+    // Animation for recording wave
+    const waveAnim = useRef(new Animated.Value(1)).current;
+    const recordingTimer = useRef(null);
+    
+    // Scroll view reference
+    const scrollViewRef = useRef(null);
 
     // API Base URL - Replace with your actual backend URL
     const API_BASE_URL = 'https://your-backend-api.com/api';
+
+    // Wave animation for recording
+    useEffect(() => {
+        let animationLoop;
+        if (isRecording) {
+            animationLoop = Animated.loop(
+                Animated.sequence([
+                    Animated.timing(waveAnim, {
+                        toValue: 1.3,
+                        duration: 500,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(waveAnim, {
+                        toValue: 1,
+                        duration: 500,
+                        useNativeDriver: true,
+                    }),
+                ])
+            );
+            animationLoop.start();
+        } else {
+            waveAnim.setValue(1);
+            if (animationLoop) {
+                animationLoop.stop();
+            }
+        }
+        return () => {
+            if (animationLoop) {
+                animationLoop.stop();
+            }
+        };
+    }, [isRecording]);
+
+    // Recording duration timer
+    useEffect(() => {
+        if (isRecording) {
+            recordingTimer.current = setInterval(() => {
+                setRecordingDuration(prev => prev + 1);
+            }, 1000);
+        } else {
+            if (recordingTimer.current) {
+                clearInterval(recordingTimer.current);
+                setRecordingDuration(0);
+            }
+        }
+        return () => {
+            if (recordingTimer.current) {
+                clearInterval(recordingTimer.current);
+            }
+        };
+    }, [isRecording]);
 
     // Generate or get session ID
     useEffect(() => {
@@ -52,9 +118,9 @@ const FloatingChatbot = () => {
         setSessionId(userId);
     }, [user]);
 
-    // Load chat history when chat opens
+    // Load chat messages when chat opens
     useEffect(() => {
-        const loadChatHistory = async () => {
+        const loadChatMessages = async () => {
             if (isChatVisible && sessionId) {
                 setIsLoadingHistory(true);
                 try {
@@ -97,7 +163,7 @@ const FloatingChatbot = () => {
                         setMessages([welcome]);
                     }
                 } catch (error) {
-                    console.error('Error loading chat history:', error);
+                    console.error('Error loading chat messages:', error);
                     const welcome = {
                         id: Date.now(),
                         text: "👋 Hi! I'm your AI Farming Assistant. How can I help you today?",
@@ -110,81 +176,8 @@ const FloatingChatbot = () => {
             }
         };
 
-        loadChatHistory();
+        loadChatMessages();
     }, [isChatVisible, sessionId, chatType]);
-
-    // Load all chat sessions for history menu
-    const loadChatSessions = async () => {
-        setLoadingSessions(true);
-        try {
-            const response = await fetch(`${API_BASE_URL}/chat/sessions`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    userId: user?.id || sessionId,
-                    chatType: chatType
-                }),
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                setChatSessions(data.sessions || []);
-            }
-        } catch (error) {
-            console.error('Error loading chat sessions:', error);
-            Alert.alert(
-                'Unable to Load History',
-                'Please check your connection and try again.',
-                [{ text: 'OK' }]
-            );
-        } finally {
-            setLoadingSessions(false);
-        }
-    };
-
-    // Load specific chat session
-    const loadChatSession = async (sessionId) => {
-        setShowHistoryMenu(false);
-        setIsLoadingHistory(true);
-        
-        try {
-            const response = await fetch(`${API_BASE_URL}/chat/history`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    sessionId: sessionId,
-                    chatType: chatType,
-                    limit: 50
-                }),
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                if (data.messages && data.messages.length > 0) {
-                    const formattedMessages = data.messages.map(msg => ({
-                        id: msg.id || Date.now() + Math.random(),
-                        text: msg.text,
-                        isUser: msg.isUser,
-                        timestamp: msg.timestamp
-                    }));
-                    setMessages(formattedMessages);
-                }
-            }
-        } catch (error) {
-            console.error('Error loading chat session:', error);
-            Alert.alert(
-                'Unable to Load Chat',
-                'Please try again.',
-                [{ text: 'OK' }]
-            );
-        } finally {
-            setIsLoadingHistory(false);
-        }
-    };
 
     // Save message to backend
     const saveMessageToBackend = async (message, isUser) => {
@@ -249,7 +242,10 @@ const FloatingChatbot = () => {
     };
 
     const handleSend = async () => {
-        if (!input.trim()) return;
+        if (!input.trim()) {
+            Alert.alert('Message Required', 'Please type a message to send.');
+            return;
+        }
         
         const userMsg = { id: Date.now(), text: input, isUser: true };
         setMessages(prev => [...prev, userMsg]);
@@ -290,170 +286,253 @@ const FloatingChatbot = () => {
         }
     };
 
-    const handleMicPress = () => {
-        Speech.speak("What would you like to ask?", { language: lang, rate: 1.05, pitch: 1.3 });
+    // Function to send audio to backend for speech-to-text
+    const transcribeAudio = async (audioUri) => {
+        const formData = new FormData();
+        formData.append('audio', {
+            uri: audioUri,
+            type: 'audio/m4a',
+            name: 'recording.m4a'
+        });
+        formData.append('sessionId', sessionId);
+        formData.append('language', lang);
+
+        const response = await fetch(`${API_BASE_URL}/speech-to-text`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+            body: formData
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to transcribe audio');
+        }
+
+        const data = await response.json();
+        return data.text;
     };
 
-    const formatDate = (timestamp) => {
-        const date = new Date(timestamp);
-        return date.toLocaleDateString() + ' ' + date.toLocaleTimeString().slice(0,5);
+    // WhatsApp-style voice recording functions
+    const handleStartRecording = async () => {
+        try {
+            // Request permission if not granted
+            if (permissionResponse?.status !== 'granted') {
+                const { status } = await Audio.requestPermissionsAsync();
+                if (status !== 'granted') {
+                    Alert.alert(
+                        'Permission Required',
+                        'Microphone permission is needed to record voice messages.',
+                        [{ text: 'OK' }]
+                    );
+                    return;
+                }
+            }
+
+            // Configure audio mode for recording
+            await Audio.setAudioModeAsync({
+                allowsRecordingIOS: true,
+                playsInSilentModeIOS: true,
+                staysActiveInBackground: false,
+                shouldDuckAndroid: true,
+            });
+
+            // Start recording with high quality
+            const { recording } = await Audio.Recording.createAsync(
+                Audio.RecordingOptionsPresets.HIGH_QUALITY
+            );
+            
+            setRecording(recording);
+            setIsRecording(true);
+            
+        } catch (err) {
+            console.error('Failed to start recording', err);
+        }
     };
 
-    const HistoryMenuItem = ({ session }) => (
-        <TouchableOpacity 
-            style={styles.historyItem}
-            onPress={() => loadChatSession(session.id)}
-        >
-            <Ionicons name="chatbubble-outline" size={20} color="#2E7D32" />
-            <View style={styles.historyItemContent}>
-                <Text style={styles.historyItemTitle} numberOfLines={1}>
-                    {session.preview || 'Chat Session'}
-                </Text>
-                <Text style={styles.historyItemDate}>
-                    {formatDate(session.lastMessage)}
-                </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#999" />
-        </TouchableOpacity>
-    );
+    const handleStopRecording = async () => {
+        if (!recording) return;
+
+        setIsRecording(false);
+        
+        try {
+            await recording.stopAndUnloadAsync();
+            await Audio.setAudioModeAsync({
+                allowsRecordingIOS: false,
+                playsInSilentModeIOS: true,
+            });
+
+            const uri = recording.getURI();
+            
+            // Show processing indicator
+            setIsTyping(true);
+            
+            // Send audio to backend for transcription
+            const transcribedText = await transcribeAudio(uri);
+            
+            // Create a message from the transcribed text
+            const userMsg = { 
+                id: Date.now(), 
+                text: transcribedText, 
+                isUser: true 
+            };
+            
+            // Add the message to chat
+            setMessages(prev => [...prev, userMsg]);
+            
+            // Save to backend
+            await saveMessageToBackend(transcribedText, true);
+            
+            // Get AI response
+            const aiResponse = await getAIResponse(transcribedText);
+            
+            if (aiResponse) {
+                const aiMsg = { 
+                    id: Date.now() + 1, 
+                    text: aiResponse, 
+                    isUser: false 
+                };
+                setMessages(prev => [...prev, aiMsg]);
+                await saveMessageToBackend(aiResponse, false);
+            }
+            
+            setIsTyping(false);
+
+        } catch (error) {
+            console.error('Failed to process recording:', error);
+            Alert.alert('Error', 'Failed to process voice recording. Please try again.');
+            setIsTyping(false);
+        } finally {
+            setRecording(null);
+        }
+    };
+
+    const formatDuration = (seconds) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    };
 
     return (
-        <>
-            <Modal visible={isChatVisible} animationType="slide" transparent={false}>
-                <StatusBar barStyle="light-content" backgroundColor="#2E7D32" />
-                <ImageBackground
-                    source={chatBackground || require('../assets/truck.jpg')}
-                    style={styles.backgroundImage}
-                    resizeMode="cover"
-                >
-                    <SafeAreaView style={styles.safeArea}>
-                        <View style={styles.container}>
-                            {/* Header */}
-                            <View style={styles.header}>
-                                <View style={styles.headerLeft}>
-                                    <TouchableOpacity 
-                                        onPress={() => {
-                                            setShowHistoryMenu(true);
-                                            loadChatSessions();
-                                        }}
-                                        style={styles.menuButton}
-                                    >
-                                        <Ionicons name="menu" size={28} color="#fff" />
-                                    </TouchableOpacity>
-                                    <Ionicons name="leaf" size={28} color="#fff" />
-                                    <Text style={styles.headerText}>Ask your question</Text>
-                                </View>
-                                <TouchableOpacity 
-                                    onPress={() => setChatVisible(false)}
-                                    style={styles.closeButton}
-                                >
-                                    <Ionicons name="close" size={28} color="#fff" />
-                                </TouchableOpacity>
+        <Modal visible={isChatVisible} animationType="slide" transparent={false}>
+            <StatusBar barStyle="light-content" backgroundColor="#2E7D32" />
+            <ImageBackground
+                source={chatBackground || require('../assets/truck.jpg')}
+                style={styles.backgroundImage}
+                resizeMode="cover"
+            >
+                <SafeAreaView style={styles.safeArea}>
+                    <View style={styles.container}>
+                        {/* Header - Removed menu button */}
+                        <View style={styles.header}>
+                            <View style={styles.headerLeft}>
+                                <Ionicons name="leaf" size={28} color="#fff" />
+                                <Text style={styles.headerText}>Ask your question</Text>
                             </View>
-
-                            {/* Chat Body */}
-                            <ScrollView 
-                                style={styles.chatBody} 
-                                contentContainerStyle={styles.chatContent}
-                                showsVerticalScrollIndicator={false}
+                            <TouchableOpacity 
+                                onPress={() => setChatVisible(false)}
+                                style={styles.closeButton}
                             >
-                                {isLoadingHistory ? (
-                                    <View style={styles.loadingHistory}>
-                                        <ActivityIndicator size="small" color="#2E7D32" />
-                                        <Text style={styles.loadingText}>Loading conversation...</Text>
-                                    </View>
-                                ) : (
-                                    <>
-                                        {pinnedMessage && (
-                                            <View style={styles.pinnedBox}>
-                                                <View style={styles.pinnedHeader}>
-                                                    <Ionicons name="pin" size={16} color="#2E7D32" />
-                                                    <Text style={styles.pinnedTitle}>Crop Details</Text>
-                                                    <TouchableOpacity onPress={() => setPinnedMessage(null)}>
-                                                        <Ionicons name="close-circle" size={18} color="#666" />
-                                                    </TouchableOpacity>
-                                                </View>
-                                                <Text style={styles.pinnedText}>{pinnedMessage}</Text>
-                                            </View>
-                                        )}
-                                        
-                                        {messages.map(m => (
-                                            <ChatMessage key={m.id} message={m} />
-                                        ))}
-                                        
-                                        {isTyping && (
-                                            <View style={styles.typingIndicator}>
-                                                <ActivityIndicator size="small" color="#2E7D32" />
-                                                <Text style={styles.typingText}>AI is thinking...</Text>
-                                            </View>
-                                        )}
-                                    </>
-                                )}
-                            </ScrollView>
-
-                            {/* Input Area */}
-                            <View style={styles.inputArea}>
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="Type your question..."
-                                    placeholderTextColor="#999"
-                                    value={input}
-                                    onChangeText={setInput}
-                                    multiline
-                                    editable={!isLoadingHistory}
-                                />
-                                <TouchableOpacity 
-                                    style={[styles.actionButton, styles.sendButton]} 
-                                    onPress={handleSend}
-                                    disabled={!input.trim() || isLoadingHistory}
-                                >
-                                    <Ionicons name="send" size={22} color="#fff" />
-                                </TouchableOpacity>
-                                <TouchableOpacity 
-                                    style={[styles.actionButton, styles.micButton]} 
-                                    onPress={handleMicPress}
-                                >
-                                    <Ionicons name="mic" size={22} color="#fff" />
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                    </SafeAreaView>
-                </ImageBackground>
-            </Modal>
-
-            {/* History Menu Modal */}
-            <Modal visible={showHistoryMenu} animationType="slide" transparent={true}>
-                <View style={styles.modalOverlay}>
-                    <View style={styles.historyMenu}>
-                        <View style={styles.historyHeader}>
-                            <Text style={styles.historyTitle}>Chat History</Text>
-                            <TouchableOpacity onPress={() => setShowHistoryMenu(false)}>
-                                <Ionicons name="close" size={24} color="#333" />
+                                <Ionicons name="close" size={28} color="#fff" />
                             </TouchableOpacity>
                         </View>
-                        
-                        {loadingSessions ? (
-                            <View style={styles.loadingSessions}>
-                                <ActivityIndicator size="large" color="#2E7D32" />
-                                <Text style={styles.loadingText}>Loading history...</Text>
-                            </View>
-                        ) : chatSessions.length > 0 ? (
-                            <FlatList
-                                data={chatSessions}
-                                keyExtractor={(item) => item.id}
-                                renderItem={({item}) => <HistoryMenuItem session={item} />}
-                                contentContainerStyle={styles.historyList}
-                            />
-                        ) : (
-                            <View style={styles.emptyHistory}>
-                                <Ionicons name="chatbubble-outline" size={50} color="#ccc" />
-                                <Text style={styles.emptyHistoryText}>No chat history yet</Text>
-                            </View>
+
+                        {/* Chat Body */}
+                        <ScrollView 
+                            ref={scrollViewRef}
+                            style={styles.chatBody} 
+                            contentContainerStyle={styles.chatContent}
+                            showsVerticalScrollIndicator={false}
+                            onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
+                        >
+                            {isLoadingHistory ? (
+                                <View style={styles.loadingHistory}>
+                                    <ActivityIndicator size="small" color="#2E7D32" />
+                                    <Text style={styles.loadingText}>Loading conversation...</Text>
+                                </View>
+                            ) : (
+                                <>
+                                    {pinnedMessage && (
+                                        <View style={styles.pinnedBox}>
+                                            <View style={styles.pinnedHeader}>
+                                                <Ionicons name="pin" size={16} color="#2E7D32" />
+                                                <Text style={styles.pinnedTitle}>Crop Details</Text>
+                                                <TouchableOpacity onPress={() => setPinnedMessage(null)}>
+                                                    <Ionicons name="close-circle" size={18} color="#666" />
+                                                </TouchableOpacity>
+                                            </View>
+                                            <Text style={styles.pinnedText}>{pinnedMessage}</Text>
+                                        </View>
+                                    )}
+                                    
+                                    {messages.map(m => (
+                                        <ChatMessage key={m.id} message={m} />
+                                    ))}
+                                    
+                                    {isTyping && (
+                                        <View style={styles.typingIndicator}>
+                                            <ActivityIndicator size="small" color="#2E7D32" />
+                                            <Text style={styles.typingText}>AI is thinking...</Text>
+                                        </View>
+                                    )}
+                                </>
+                            )}
+                        </ScrollView>
+
+                        {/* Recording Indicator */}
+                        {isRecording && (
+                            <Animated.View style={[styles.recordingIndicator, { transform: [{ scale: waveAnim }] }]}>
+                                <Ionicons name="mic" size={24} color="#fff" />
+                                <Text style={styles.recordingText}>{formatDuration(recordingDuration)}</Text>
+                                <View style={styles.recordingWave}>
+                                    <Animated.View style={[styles.waveBar, { transform: [{ scaleY: waveAnim }] }]} />
+                                    <Animated.View style={[styles.waveBar, { transform: [{ scaleY: Animated.multiply(waveAnim, 1.2) }] }]} />
+                                    <Animated.View style={[styles.waveBar, { transform: [{ scaleY: waveAnim }] }]} />
+                                </View>
+                                <Text style={styles.cancelHint}>Release to send</Text>
+                            </Animated.View>
                         )}
+
+                        {/* Input Area - Both buttons always visible */}
+                        <View style={styles.inputArea}>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Type your question..."
+                                placeholderTextColor="#999"
+                                value={input}
+                                onChangeText={setInput}
+                                multiline
+                                editable={!isLoadingHistory && !isTyping && !isRecording}
+                            />
+                            
+                            {/* Send Button - Always enabled */}
+                            <TouchableOpacity 
+                                style={[styles.actionButton, styles.sendButton]} 
+                                onPress={handleSend}
+                                disabled={isTyping || isRecording}
+                            >
+                                <Ionicons name="send" size={22} color="#fff" />
+                            </TouchableOpacity>
+                            
+                            {/* Mic Button - Original color */}
+                            <TouchableOpacity 
+                                style={[styles.actionButton, styles.micButton]}
+                                onPressIn={handleStartRecording}
+                                onPressOut={handleStopRecording}
+                                delayLongPress={100}
+                                disabled={isTyping}
+                            >
+                                <Ionicons 
+                                    name="mic" 
+                                    size={22} 
+                                    color="#fff" 
+                                />
+                            </TouchableOpacity>
+                        </View>
                     </View>
-                </View>
-            </Modal>
-        </>
+                </SafeAreaView>
+            </ImageBackground>
+        </Modal>
     );
 };
 
@@ -465,11 +544,11 @@ const styles = StyleSheet.create({
     },
     safeArea: {
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.2)', // CHANGED: Reduced from 0.3 to 0.2
+        backgroundColor: 'rgba(0, 0, 0, 0.2)',
     },
     container: {
         flex: 1,
-        backgroundColor: 'rgba(255, 255, 255, 0.5)', // CHANGED: Reduced from 0.88 to 0.75
+        backgroundColor: 'rgba(255, 255, 255, 0.75)',
     },
     header: {
         backgroundColor: '#2E7D32',
@@ -487,9 +566,6 @@ const styles = StyleSheet.create({
     headerLeft: {
         flexDirection: 'row',
         alignItems: 'center',
-    },
-    menuButton: {
-        marginRight: 10,
     },
     headerText: {
         color: '#fff',
@@ -569,7 +645,7 @@ const styles = StyleSheet.create({
     inputArea: {
         flexDirection: 'row',
         padding: 15,
-        backgroundColor: 'rgba(255, 255, 255, 0.95)', // CHANGED: Reduced from 0.97 to 0.95
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
         borderTopWidth: 1,
         borderTopColor: '#ddd',
         alignItems: 'flex-end',
@@ -605,72 +681,45 @@ const styles = StyleSheet.create({
     micButton: {
         backgroundColor: '#FF8F00',
     },
-    // History Menu Styles
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        justifyContent: 'flex-end',
-    },
-    historyMenu: {
-        backgroundColor: '#fff',
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        maxHeight: height * 0.8,
-        paddingTop: 20,
-    },
-    historyHeader: {
+    recordingIndicator: {
+        position: 'absolute',
+        bottom: 100,
+        alignSelf: 'center',
+        backgroundColor: '#D32F2F',
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
+        paddingVertical: 12,
         paddingHorizontal: 20,
-        paddingBottom: 15,
-        borderBottomWidth: 1,
-        borderBottomColor: '#e0e0e0',
+        borderRadius: 30,
+        elevation: 5,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        zIndex: 1000,
     },
-    historyTitle: {
-        fontSize: 20,
+    recordingText: {
+        color: '#fff',
+        fontSize: 16,
         fontWeight: 'bold',
-        color: '#2E7D32',
+        marginLeft: 8,
+        marginRight: 12,
     },
-    loadingSessions: {
-        padding: 40,
-        alignItems: 'center',
-    },
-    historyList: {
-        padding: 15,
-    },
-    historyItem: {
+    recordingWave: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 15,
-        backgroundColor: '#f9f9f9',
-        borderRadius: 10,
-        marginBottom: 10,
-        borderWidth: 1,
-        borderColor: '#e0e0e0',
+        marginRight: 8,
     },
-    historyItemContent: {
-        flex: 1,
-        marginLeft: 12,
+    waveBar: {
+        width: 4,
+        height: 20,
+        backgroundColor: '#fff',
+        marginHorizontal: 2,
+        borderRadius: 2,
     },
-    historyItemTitle: {
-        fontSize: 15,
-        fontWeight: '500',
-        color: '#333',
-        marginBottom: 4,
-    },
-    historyItemDate: {
+    cancelHint: {
+        color: 'rgba(255, 255, 255, 0.8)',
         fontSize: 12,
-        color: '#999',
-    },
-    emptyHistory: {
-        padding: 40,
-        alignItems: 'center',
-    },
-    emptyHistoryText: {
-        marginTop: 10,
-        fontSize: 16,
-        color: '#999',
     },
 });
 
