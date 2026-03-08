@@ -32,9 +32,14 @@ const HomeScreen = ({ navigation }) => {
     lang,
     setLang,
     convertDigits,
+    activeLocation,
+    savedLocations,
+    setActiveLocation,
   } = useContext(AppContext);
+  
   const [profileModalVisible, setProfileModalVisible] = useState(false);
   const [languageDropdownVisible, setLanguageDropdownVisible] = useState(false);
+  const [locationDropdownVisible, setLocationDropdownVisible] = useState(false);
 
   // Set immersive mode
   useEffect(() => {
@@ -57,6 +62,20 @@ const HomeScreen = ({ navigation }) => {
   const changeLanguage = (languageCode) => {
     setLang(languageCode);
     setLanguageDropdownVisible(false);
+  };
+
+  // Function to change location
+  const changeLocation = (newLocation) => {
+    setActiveLocation(newLocation);
+    setLocationDropdownVisible(false);
+  };
+
+  // Get user's display name (only show name if exists, otherwise show translated "Guest")
+  const getUserDisplayName = () => {
+    if (user?.name) {
+      return user.name; // Name from signup (doesn't need translation)
+    }
+    return t.guest; // Translated "Guest" from language files
   };
 
   return (
@@ -93,7 +112,7 @@ const HomeScreen = ({ navigation }) => {
           }}
           showsVerticalScrollIndicator={false}
         >
-          {/* Top Profile Bar */}
+          {/* Top Profile Bar with Farm Badge */}
           <View
             style={{
               flexDirection: "row",
@@ -115,16 +134,31 @@ const HomeScreen = ({ navigation }) => {
                 elevation: 4,
               }}
             >
+              {/* Farm Name Badge */}
+              {activeLocation && (
+                <View style={{
+                  backgroundColor: "#FF9800",
+                  borderRadius: 15,
+                  paddingHorizontal: 8,
+                  paddingVertical: 4,
+                  marginRight: 8,
+                }}>
+                  <Text style={{ color: "#fff", fontSize: 12, fontWeight: "bold" }}>
+                    {activeLocation.name}
+                  </Text>
+                </View>
+              )}
+              
               <Text
                 style={{
-                  marginLeft: 10,
+                  marginLeft: activeLocation ? 0 : 10,
                   marginRight: 10,
                   fontSize: 20,
                   fontWeight: "600",
                   color: "#0d3706",
                 }}
               >
-                {t.hello}, {user?.name || ""}
+                {t.hello}, {getUserDisplayName()}
               </Text>
               <Ionicons name="menu" size={24} color="#0d3706" />
             </TouchableOpacity>
@@ -139,8 +173,9 @@ const HomeScreen = ({ navigation }) => {
               borderRadius: 25,
               overflow: "hidden",
               marginBottom: 20,
-              elevation: 10,borderWidth:2.5,
-              borderColor:"#rgba(255, 255, 255, 0.3)"
+              elevation: 10,
+              borderWidth:2.5,
+              borderColor:"rgba(255, 255, 255, 0.3)"
             }}
           >
             <ImageBackground
@@ -198,8 +233,9 @@ const HomeScreen = ({ navigation }) => {
                 height: 180,
                 borderRadius: 25,
                 overflow: "hidden",
-                elevation: 8,borderWidth:2.5,
-              borderColor:"rgba(255, 255, 255, 0.3)"
+                elevation: 8,
+                borderWidth:2.5,
+                borderColor:"rgba(255, 255, 255, 0.3)"
               }}
             >
               <ImageBackground
@@ -257,8 +293,9 @@ const HomeScreen = ({ navigation }) => {
                 height: 180,
                 borderRadius: 25,
                 overflow: "hidden",
-                elevation: 8,borderWidth:2.5,
-              borderColor:"rgba(255, 255, 255, 0.3)"
+                elevation: 8,
+                borderWidth:2.5,
+                borderColor:"rgba(255, 255, 255, 0.3)"
               }}
             >
               <ImageBackground
@@ -322,7 +359,8 @@ const HomeScreen = ({ navigation }) => {
               borderRadius: 25,
               overflow: "hidden",
               elevation: 8,
-              marginBottom: 20,borderWidth:2.5,
+              marginBottom: 20,
+              borderWidth:2.5,
               borderColor:"rgba(255, 255, 255, 0.3)"
             }}
           >
@@ -374,6 +412,7 @@ const HomeScreen = ({ navigation }) => {
             onPress={() => {
               setProfileModalVisible(false);
               setLanguageDropdownVisible(false);
+              setLocationDropdownVisible(false);
             }}
           >
             <View
@@ -394,7 +433,7 @@ const HomeScreen = ({ navigation }) => {
                   marginBottom: 20,
                 }}
               >
-                {t.hello}, {user?.name || ""}
+                {t.hello}, {getUserDisplayName()}
               </Text>
 
               <View
@@ -404,28 +443,151 @@ const HomeScreen = ({ navigation }) => {
                   paddingTop: 10,
                 }}
               >
+                {/* Location/Farm Section */}
                 <View
                   style={{
                     flexDirection: "row",
                     alignItems: "center",
                     paddingVertical: 12,
+                    position: "relative",
+                    zIndex: 2000,
                   }}
                 >
                   <Ionicons name="location" size={24} color="#2E7D32" />
                   <View style={{ marginLeft: 15, flex: 1 }}>
                     <Text style={{ fontSize: 16, fontWeight: "bold" }}>
-                      {t.area}:
+                      {t.currentFarm || "Current Farm"}:
                     </Text>
-                    <Text style={{ color: "#666" }}>
-                      {location?.district || t.locationError}
+                    <Text style={{ color: "#666", fontWeight: "500" }}>
+                      {activeLocation?.name || t.noFarmSelected || "No farm selected"}
                     </Text>
+                    {activeLocation?.address && (
+                      <Text style={{ color: "#999", fontSize: 12 }} numberOfLines={1}>
+                        {activeLocation.address}
+                      </Text>
+                    )}
                   </View>
+                  
+                  {/* Location Dropdown */}
                   <TouchableOpacity
-                    onPress={() => navigation.navigate("Location")}
+                    onPress={() => {
+                      setLocationDropdownVisible(!locationDropdownVisible);
+                      setLanguageDropdownVisible(false);
+                    }}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      backgroundColor: "#f0f0f0",
+                      padding: 8,
+                      borderRadius: 10,
+                      minWidth: 100,
+                      justifyContent: "space-between",
+                    }}
                   >
-                    <Ionicons name="sync" size={20} color="#2E7D32" />
+                    <Text style={{ marginRight: 5, fontSize: 16, color: "#333" }}>
+                      {t.change || "Change"}
+                    </Text>
+                    <Ionicons 
+                      name={locationDropdownVisible ? "chevron-up" : "chevron-down"} 
+                      size={18} 
+                      color="#2E7D32"
+                    />
                   </TouchableOpacity>
                 </View>
+
+                {/* Location Dropdown Menu */}
+                {locationDropdownVisible && (
+                  <View
+                    style={{
+                      position: "absolute",
+                      right: 25,
+                      top: 90,
+                      backgroundColor: "#fff",
+                      borderRadius: 12,
+                      elevation: 8,
+                      shadowColor: "#000",
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.25,
+                      shadowRadius: 4,
+                      borderWidth: 1,
+                      borderColor: "#ddd",
+                      zIndex: 2500,
+                      width: 150,
+                      maxHeight: 200,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <ScrollView>
+                      {savedLocations && savedLocations.length > 0 ? (
+                        savedLocations.map((loc) => (
+                          <TouchableOpacity
+                            key={loc.id}
+                            onPress={() => changeLocation(loc)}
+                            style={{
+                              paddingVertical: 15,
+                              paddingHorizontal: 15,
+                              borderBottomWidth: 1,
+                              borderBottomColor: "#f0f0f0",
+                              backgroundColor: activeLocation?.id === loc.id ? "#e8f5e9" : "#fff",
+                            }}
+                          >
+                            <Text style={{ 
+                              fontSize: 16,
+                              color: activeLocation?.id === loc.id ? "#2E7D32" : "#333",
+                              fontWeight: activeLocation?.id === loc.id ? "bold" : "normal",
+                              textAlign: "center",
+                            }}>
+                              {loc.name}
+                            </Text>
+                          </TouchableOpacity>
+                        ))
+                      ) : (
+                        <TouchableOpacity
+                          onPress={() => {
+                            setLocationDropdownVisible(false);
+                            setProfileModalVisible(false);
+                            navigation.navigate("SavedLocations");
+                          }}
+                          style={{
+                            paddingVertical: 15,
+                            paddingHorizontal: 15,
+                            alignItems: "center",
+                          }}
+                        >
+                          <Text style={{ color: "#2E7D32", fontSize: 14, textAlign: "center" }}>
+                            + {t.addNewFarm || "Add New Farm"}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                      
+                      {/* Option to go to Saved Locations */}
+                      <TouchableOpacity
+                        onPress={() => {
+                          setLocationDropdownVisible(false);
+                          setProfileModalVisible(false);
+                          navigation.navigate("SavedLocations");
+                        }}
+                        style={{
+                          paddingVertical: 12,
+                          paddingHorizontal: 15,
+                          borderTopWidth: 1,
+                          borderTopColor: "#f0f0f0",
+                          backgroundColor: "#f9f9f9",
+                          alignItems: "center",
+                        }}
+                      >
+                        <Text style={{ 
+                          fontSize: 13,
+                          color: "#2E7D32",
+                          fontWeight: "600",
+                          textAlign: "center",
+                        }}>
+                          {t.manageFarms || "Manage Farms"}
+                        </Text>
+                      </TouchableOpacity>
+                    </ScrollView>
+                  </View>
+                )}
 
                 <View
                   style={{
@@ -464,7 +626,10 @@ const HomeScreen = ({ navigation }) => {
                   
                   {/* Language Dropdown Trigger */}
                   <TouchableOpacity
-                    onPress={() => setLanguageDropdownVisible(!languageDropdownVisible)}
+                    onPress={() => {
+                      setLanguageDropdownVisible(!languageDropdownVisible);
+                      setLocationDropdownVisible(false);
+                    }}
                     style={{
                       flexDirection: "row",
                       alignItems: "center",
@@ -506,7 +671,7 @@ const HomeScreen = ({ navigation }) => {
                       shadowRadius: 4,
                       borderWidth: 1,
                       borderColor: "#ddd",
-                      zIndex: 2000,
+                      zIndex: 1500,
                       width: 120,
                       overflow: "hidden",
                     }}
@@ -612,8 +777,9 @@ const HomeScreen = ({ navigation }) => {
             justifyContent: "center",
             alignItems: "center",
             elevation: 10,
-            zIndex: 999,borderWidth:1,
-              borderColor:"#ffffff"
+            zIndex: 999,
+            borderWidth:1,
+            borderColor:"#ffffff"
           }}
           onPress={() => toggleChat("General")}
         >

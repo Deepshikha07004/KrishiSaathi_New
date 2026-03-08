@@ -16,7 +16,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppContext } from "../context/AppContext";
 
 const SignupScreen = ({ navigation }) => {
@@ -25,6 +24,9 @@ const SignupScreen = ({ navigation }) => {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [phoneError, setPhoneError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  // Backend API URL - Replace with your actual backend URL
+  const BACKEND_API_URL = "https://your-backend-api.com/api"; // Update this
 
   const validatePhone = (num) => {
     const clean = num.replace(/\D/g, "");
@@ -41,34 +43,52 @@ const SignupScreen = ({ navigation }) => {
 
     setIsLoading(true);
     
-    // TEMPORARY: Simulate API call with timeout
-    setTimeout(async () => {
-      try {
-        // Store user data locally without backend
+    try {
+      // API call to backend for signup - BACKEND HANDLES STORAGE
+      const response = await fetch(`${BACKEND_API_URL}/auth/signup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: fullName.trim(),
+          phone: phoneNumber,
+          language: selectedLanguage,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Store user data in context only - backend handles all storage
         const userData = { 
           phone: phoneNumber, 
-          name: fullName,
+          name: fullName.trim(),
+          token: data.token,
+          userId: data.userId,
           language: selectedLanguage,
         };
         
         setUser(userData);
         
-        // Store user data in AsyncStorage for persistence
-        await AsyncStorage.setItem("userData", JSON.stringify(userData));
-        await AsyncStorage.setItem("isLoggedIn", "true");
-        
-        // Navigate to next page
-        navigation.replace("Location");
-      } catch (error) {
-        console.error("Signup error:", error);
-        Alert.alert("Error", "Failed to save user data");
-      } finally {
-        setIsLoading(false);
+        // Navigate based on whether user has saved locations
+        if (data.hasLocations) {
+          navigation.replace("SavedLocations");
+        } else {
+          navigation.replace("Location");
+        }
+      } else {
+        Alert.alert("Error", data.message || "Signup failed. Please try again.");
       }
-    }, 1500); // 1.5 second delay to simulate API call
+    } catch (error) {
+      console.error("Signup error:", error);
+      Alert.alert("Error", "Network error. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  // TEMPORARY: Direct navigation without validation
+  // TEMPORARY: Direct navigation without validation (KEEP THIS FOR TESTING)
   const handleTemporarySkip = () => {
     navigation.replace("Location");
   };
@@ -350,7 +370,7 @@ const SignupScreen = ({ navigation }) => {
                   </LinearGradient>
                 </TouchableOpacity>
 
-                {/* TEMPORARY SKIP BUTTON */}
+                {/* TEMPORARY SKIP BUTTON (KEEP FOR TESTING) */}
                 <TouchableOpacity
                   onPress={handleTemporarySkip}
                   style={{

@@ -5,6 +5,7 @@ import LanguageScreen from '../screens/LanguageScreen';
 import LoginScreen from '../screens/LoginScreen';
 import SignupScreen from '../screens/SignupScreen';
 import LocationScreen from '../screens/LocationScreen';
+import SavedLocationsScreen from '../screens/SavedLocationScreen'; // Just the component name
 import HomeScreen from '../screens/HomeScreen';
 import WeatherScreen from '../screens/WeatherScreen';
 import CropRecommendationScreen from '../screens/CropRecommendationScreen';
@@ -29,6 +30,7 @@ const AppNavigator = () => {
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Signup" component={SignupScreen} />
             <Stack.Screen name="Location" component={LocationScreen} />
+            <Stack.Screen name="SavedLocations" component={SavedLocationsScreen} />
             <Stack.Screen name="Home" component={HomeScreen} />
             <Stack.Screen name="Weather" component={WeatherScreen} options={{ headerShown: true, title: "Weather" }} />
             <Stack.Screen name="CropRec" component={CropRecommendationScreen} options={{ headerShown: true, title: "Recommendation" }} />

@@ -89,11 +89,31 @@ const translations = {
         fertilizerRec: "Fertilizer Recommendation",
         searchLocation: "Search Location",
         hello: "Hello",
+        guest: "Guest",
         cropRecDesc: "Find best crops for your soil",
         cropAdvDesc: "Ask AI for instant advice",
         locationError: "Location Error",
         notProvided: "Not Provided",
         locationFound: "Location Found",
+        
+        // 👇 ADDED: For HomeScreen location dropdown
+        currentFarm: "Current Farm",
+        noFarmSelected: "No farm selected",
+        change: "Change",
+        addNewFarm: "Add New Farm",
+        manageFarms: "Manage Farms",
+        
+        // 👇 ADDED: For SavedLocationsScreen
+        yourFarms: "Your Farms",
+        selectFarm: "Select a farm to continue",
+        savedFarms: "Saved Farms",
+        noFarmsYet: "No Farms Yet",
+        addFirstFarm: "You haven't added any farms yet. Add your first farm to get started.",
+        addNewFarm: "Add New Farm",
+        loadingFarms: "Loading your farms...",
+        currentlyActive: "Currently Active",
+        error: "Error",
+        failedToSelect: "Failed to select location",
     },
     hi: {
         appName: "कृषि साथी",
@@ -185,11 +205,31 @@ const translations = {
         fertilizerRec: "उर्वरक सिफारिश",
         searchLocation: "स्थान खोजें",
         hello: "नमस्ते",
+        guest: "अतिथि",
         cropRecDesc: "अपनी मिट्टी के लिए सही फसल खोजें",
         cropAdvDesc: "तुरंत सलाह के लिए AI से बात करें",
         locationError: "स्थान त्रुटि",
         notProvided: "उपलब्ध नहीं",
         locationFound: "स्थान मिल गया",
+        
+        // 👇 ADDED: For HomeScreen location dropdown
+        currentFarm: "वर्तमान फार्म",
+        noFarmSelected: "कोई फार्म चयनित नहीं",
+        change: "बदलें",
+        addNewFarm: "नया फार्म जोड़ें",
+        manageFarms: "फार्म प्रबंधित करें",
+        
+        // 👇 ADDED: For SavedLocationsScreen
+        yourFarms: "आपके फार्म",
+        selectFarm: "जारी रखने के लिए फार्म चुनें",
+        savedFarms: "सेव किए गए फार्म",
+        noFarmsYet: "अभी तक कोई फार्म नहीं",
+        addFirstFarm: "आपने अभी तक कोई फार्म नहीं जोड़ा है। शुरू करने के लिए अपना पहला फार्म जोड़ें।",
+        addNewFarm: "नया फार्म जोड़ें",
+        loadingFarms: "आपके फार्म लोड हो रहे हैं...",
+        currentlyActive: "वर्तमान में सक्रिय",
+        error: "त्रुटि",
+        failedToSelect: "स्थान चयन विफल",
     },
     bn: {
         appName: "কৃষি সাথী",
@@ -290,12 +330,32 @@ const translations = {
         homeScreenCard3Desc: "ফসলের সমস্যায় আমাদের এআই সহকারী থেকে তাৎক্ষণিক পরামর্শ পান।",
         homeScreenCard4Title: "কোল্ড স্টোরেজ",
         homeScreenCard4Desc: "আপনার পণ্যের জন্য কাছাকাছি কোল্ড স্টোরেজ সুবিধা খুঁজুন।",
-        hello: "হ্যালো",
+        hello: "নমস্কার",
+        guest: "অতিথি",
         cropRecDesc: "আপনার মাটির জন্য সেরা ফসল খুঁজুন",
         cropAdvDesc: "দ্রুত পরামর্শের জন্য AI-এর সাথে কথা বলুন",
         locationError: "অবস্থান ত্রুটি",
         notProvided: "প্রদান করা হয়নি",
         locationFound: "অবস্থান পাওয়া গেছে",
+        
+        // 👇 ADDED: For HomeScreen location dropdown
+        currentFarm: "বর্তমান খামার",
+        noFarmSelected: "কোন খামার নির্বাচিত নয়",
+        change: "পরিবর্তন",
+        addNewFarm: "নতুন খামার যোগ করুন",
+        manageFarms: "খামার পরিচালনা করুন",
+        
+        // 👇 ADDED: For SavedLocationsScreen
+        yourFarms: "আপনার খামার",
+        selectFarm: "চালিয়ে যেতে একটি খামার নির্বাচন করুন",
+        savedFarms: "সংরক্ষিত খামার",
+        noFarmsYet: "এখনও কোন খামার নেই",
+        addFirstFarm: "আপনি এখনও কোন খামার যোগ করেননি। শুরু করতে আপনার প্রথম খামার যোগ করুন।",
+        addNewFarm: "নতুন খামার যোগ করুন",
+        loadingFarms: "আপনার খামার লোড হচ্ছে...",
+        currentlyActive: "বর্তমানে সক্রিয়",
+        error: "ত্রুটি",
+        failedToSelect: "অবস্থান নির্বাচন ব্যর্থ",
     },
 };
 

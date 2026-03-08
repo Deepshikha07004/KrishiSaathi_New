@@ -15,6 +15,9 @@ export const AppProvider = ({ children }) => {
     const [isManualLocation, setIsManualLocation] = useState(false);
     const [chatBackground, setChatBackground] = useState(null);
     const [weatherData, setWeatherData] = useState(null); // Added for weather
+    // 👇 ADDED: For saved locations and active farm
+    const [savedLocations, setSavedLocations] = useState([]);
+    const [activeLocation, setActiveLocation] = useState(null);
 
     const digitsMap = {
         hi: ["०", "१", "२", "३", "४", "५", "६", "७", "८", "९"],
@@ -148,7 +151,12 @@ export const AppProvider = ({ children }) => {
             chatBackground, 
             setChatBackground,
             weatherData,
-            setWeatherData
+            setWeatherData,
+            // 👇 ADDED: These two new values
+            savedLocations,
+            setSavedLocations,
+            activeLocation,
+            setActiveLocation
         }}>
             {children}
         </AppContext.Provider>

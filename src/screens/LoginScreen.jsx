@@ -25,6 +25,9 @@ const LoginScreen = ({ navigation }) => {
   const [phoneError, setPhoneError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  // Replace with your actual backend URL
+  const BACKEND_API_URL = "https://your-backend-api.com/api";
+
   const validatePhoneNumber = (number) => {
     const cleanedNumber = number.replace(/\D/g, "");
     if (cleanedNumber.length !== 10)
@@ -58,38 +61,44 @@ const LoginScreen = ({ navigation }) => {
 
     setIsLoading(true);
     try {
-      // API call to backend for login - Backend team handles database verification
-      const response = await fetch('YOUR_BACKEND_URL/api/login', {
+      // API call to backend for login
+      const response = await fetch(`${BACKEND_API_URL}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           phone: phoneNumber,
-          language: selectedLanguage, // Send selected language for response localization
+          language: selectedLanguage,
         }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        // Store user data in context only - backend handles database
+        // Store user data in context only - backend handles all storage
         const userData = { 
           phone: phoneNumber, 
           name: data.name || "Kisan Bhai",
-          token: data.token, // Token from backend for authentication
-          userId: data.userId, // User ID from backend database
+          token: data.token,
+          userId: data.userId,
           language: selectedLanguage,
         };
         
         setUser(userData);
         
-        // Store only authentication token in AsyncStorage - backend handles all user data
+        // Store only essential auth token in AsyncStorage for session management
+        // All other data is managed by backend
         if (data.token) {
           await AsyncStorage.setItem("userToken", data.token);
         }
         
-        navigation.replace("Location");
+        // Navigate based on whether user has saved locations
+        if (data.hasLocations) {
+          navigation.replace("SavedLocations");
+        } else {
+          navigation.replace("Location");
+        }
       } else {
         Alert.alert("Error", data.message || "Login failed. Please check your phone number.");
       }
@@ -359,7 +368,7 @@ const LoginScreen = ({ navigation }) => {
                   </LinearGradient>
                 </TouchableOpacity>
 
-                {/* SIGNUP LINK - CORRECTED TEXT FORMATTING */}
+                {/* SIGNUP LINK */}
                 <TouchableOpacity
                   onPress={() => navigation.navigate("Signup")}
                   activeOpacity={0.8}
