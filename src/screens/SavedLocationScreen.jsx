@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppContext } from '../context/AppContext';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native';
 import * as Speech from 'expo-speech';
 
 const SavedLocationScreen = ({ navigation }) => {
@@ -21,63 +21,198 @@ const SavedLocationScreen = ({ navigation }) => {
   const [isMuted, setIsMuted] = useState(false);
   const [isSpeakerSpeaking, setIsSpeakerSpeaking] = useState(false);
   
+  // Refs
+  const shouldRestartSpeech = useRef(false);
+  const hasSpokenWelcome = useRef(false);
+  const speechTimeoutRef = useRef(null);
+  
   const BACKEND_API_URL = "https://your-backend-api.com/api"; // Update this
 
-  // speak function
+  // speak function with language support
   const speak = (msg) => {
-    if (isMuted) return;
+    if (isMuted || !msg) return;
     
+    // Clear any pending timeouts
+    if (speechTimeoutRef.current) {
+      clearTimeout(speechTimeoutRef.current);
+    }
+    
+    // Stop any ongoing speech
     Speech.stop();
-    setIsSpeakerSpeaking(true);
+    setIsSpeakerSpeaking(false);
     
-    Speech.speak(msg, { 
-      rate: 1.0, 
-      pitch: 1.0, 
-      language: lang === "hi" ? "hi-IN" : lang === "bn" ? "bn-IN" : "en-US",
+    // Map language codes based on selected language
+    let languageCode = 'en-US'; // default English
+    
+    if (lang === 'hi') {
+      languageCode = 'hi-IN'; // Hindi
+    } else if (lang === 'bn') {
+      languageCode = 'bn-IN'; // Bengali
+    }
+    
+    console.log('Speaking in:', languageCode, 'Message:', msg);
+    
+    // Speech options for better pronunciation
+    const speechOptions = {
+      language: languageCode,
+      pitch: 1.0,
+      rate: 0.75, // Slower rate for better clarity in Hindi/Bengali
+      onStart: () => {
+        console.log('Speech started');
+        setIsSpeakerSpeaking(true);
+        shouldRestartSpeech.current = false;
+      },
       onDone: () => {
+        console.log('Speech finished');
         setIsSpeakerSpeaking(false);
       },
-      onError: () => {
+      onError: (error) => {
+        console.log('Speech error:', error);
         setIsSpeakerSpeaking(false);
+        
+        // Fallback to English
+        if (languageCode !== 'en-US') {
+          console.log('Falling back to English');
+          Speech.speak(msg, {
+            language: 'en-US',
+            pitch: 1.0,
+            rate: 0.8,
+            onStart: () => {
+              setIsSpeakerSpeaking(true);
+              shouldRestartSpeech.current = false;
+            },
+            onDone: () => setIsSpeakerSpeaking(false),
+            onError: () => setIsSpeakerSpeaking(false)
+          });
+        }
       }
-    });
+    };
+    
+    Speech.speak(msg, speechOptions);
   };
 
-  // toggle mute function
+  // toggle mute function - stops current speech and restarts from beginning when unmuted
   const toggleMute = () => {
-    if (!isMuted) {
+    const newMutedState = !isMuted;
+    
+    if (newMutedState) {
+      // Muting - stop immediately
+      setIsMuted(true);
       Speech.stop();
       setIsSpeakerSpeaking(false);
+      hasSpokenWelcome.current = false;
+    } else {
+      // Unmuting - will restart from beginning
+      setIsMuted(false);
+      shouldRestartSpeech.current = true;
+      
+      // Clear any existing speech
+      Speech.stop();
+      setIsSpeakerSpeaking(false);
+      
+      // Small delay to ensure state updates
+      speechTimeoutRef.current = setTimeout(() => {
+        // Restart appropriate message from beginning
+        if (locations.length > 0) {
+          const welcomeMsg = t.welcomeSelectFarm || "Please select a farm";
+          speak(welcomeMsg);
+        } else {
+          const noFarmsMsg = t.noFarmsYet || "No farms yet. Add your first farm to get started.";
+          speak(noFarmsMsg);
+        }
+      }, 100);
     }
-    setIsMuted(!isMuted);
   };
+
+  // Stop all speech before navigation
+  const stopSpeechAndNavigate = (destination, params = {}) => {
+    // Clear any pending timeouts
+    if (speechTimeoutRef.current) {
+      clearTimeout(speechTimeoutRef.current);
+    }
+    
+    // IMMEDIATELY stop all speech
+    Speech.stop();
+    setIsSpeakerSpeaking(false);
+    
+    // Navigate after a tiny delay to ensure speech is stopped
+    setTimeout(() => {
+      navigation.replace(destination, params);
+    }, 50);
+  };
+
+  // Auto-speak when locations are loaded
+  useEffect(() => {
+    if (!loading && !hasSpokenWelcome.current && !isMuted) {
+      // Clear any pending timeouts
+      if (speechTimeoutRef.current) {
+        clearTimeout(speechTimeoutRef.current);
+      }
+      
+      // Add delay to ensure screen is ready
+      speechTimeoutRef.current = setTimeout(() => {
+        if (locations.length > 0) {
+          const welcomeMsg = t.welcomeSelectFarm || "Please select a farm";
+          speak(welcomeMsg);
+        } else {
+          const noFarmsMsg = t.noFarmsYet || "No farms yet. Add your first farm to get started.";
+          speak(noFarmsMsg);
+        }
+        hasSpokenWelcome.current = true;
+      }, 800);
+    }
+    
+    return () => {
+      if (speechTimeoutRef.current) {
+        clearTimeout(speechTimeoutRef.current);
+      }
+    };
+  }, [loading, locations, isMuted]);
 
   // Stop all speech when screen gains focus AND when navigating away
   useFocusEffect(
     React.useCallback(() => {
-      // Clean up speech when screen comes into focus
-      Speech.stop();
-      setIsSpeakerSpeaking(false);
+      console.log('SavedLocationsScreen focused');
+      
+      // Reset welcome flag when screen gains focus
+      hasSpokenWelcome.current = false;
+      
+      // Load locations when screen comes into focus
+      loadSavedLocations();
       
       // Add navigation listener to stop speech when navigating away
       const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+        // Clear any pending timeouts
+        if (speechTimeoutRef.current) {
+          clearTimeout(speechTimeoutRef.current);
+        }
+        
         // Stop any ongoing speech before navigating away
         Speech.stop();
         setIsSpeakerSpeaking(false);
       });
       
       return () => {
-        // Clean up speech when screen loses focus
+        console.log('SavedLocationsScreen unfocused - stopping speech');
+        
+        // Clear any pending timeouts
+        if (speechTimeoutRef.current) {
+          clearTimeout(speechTimeoutRef.current);
+        }
+        
         Speech.stop();
         setIsSpeakerSpeaking(false);
         unsubscribe();
       };
-    }, [navigation])
+    }, [navigation, userId])
   );
 
   // Also clean up on unmount
   useEffect(() => {
     return () => {
+      if (speechTimeoutRef.current) {
+        clearTimeout(speechTimeoutRef.current);
+      }
       Speech.stop();
       setIsSpeakerSpeaking(false);
     };
@@ -85,6 +220,7 @@ const SavedLocationScreen = ({ navigation }) => {
 
   const loadSavedLocations = async () => {
     try {
+      setLoading(true);
       const response = await fetch(`${BACKEND_API_URL}/user/${userId}/locations`);
       if (response.ok) {
         const data = await response.json();
@@ -99,6 +235,11 @@ const SavedLocationScreen = ({ navigation }) => {
 
   const selectLocation = async (location) => {
     try {
+      // Clear any pending timeouts
+      if (speechTimeoutRef.current) {
+        clearTimeout(speechTimeoutRef.current);
+      }
+      
       // IMMEDIATELY stop all speech before navigation
       Speech.stop();
       setIsSpeakerSpeaking(false);
@@ -116,7 +257,7 @@ const SavedLocationScreen = ({ navigation }) => {
         // Update context with active location
         setActiveLocation(location);
         // Navigate to Home - speech already stopped
-        navigation.replace('Home');
+        stopSpeechAndNavigate('Home');
       } else {
         throw new Error('Failed to activate location');
       }
@@ -128,6 +269,11 @@ const SavedLocationScreen = ({ navigation }) => {
   };
 
   const addNewLocation = () => {
+    // Clear any pending timeouts
+    if (speechTimeoutRef.current) {
+      clearTimeout(speechTimeoutRef.current);
+    }
+    
     // IMMEDIATELY stop all speech before navigation
     Speech.stop();
     setIsSpeakerSpeaking(false);
@@ -146,6 +292,12 @@ const SavedLocationScreen = ({ navigation }) => {
     <TouchableOpacity
       style={styles.locationCard}
       onPress={() => selectLocation(item)}
+      onLongPress={() => {
+        // Speak farm name on long press
+        if (!isMuted) {
+          speak(item.name);
+        }
+      }}
       activeOpacity={0.7}
     >
       <LinearGradient
@@ -193,18 +345,20 @@ const SavedLocationScreen = ({ navigation }) => {
   if (loading) {
     return (
       <ImageBackground
-        source={require("../assets/locationbg.jpg")}
+        source={require("../assets/savedlocationbg.jpg")}
         style={{ flex: 1 }}
         resizeMode="cover"
       >
-        <View style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: "rgba(210, 243, 144, 0.5)",
-        }} />
+        <View
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(210, 243, 144, 0.5)",
+          }}
+        />
         <SafeAreaView style={{ flex: 1 }}>
           <View style={styles.centered}>
             <LinearGradient
@@ -223,7 +377,7 @@ const SavedLocationScreen = ({ navigation }) => {
 
   return (
     <ImageBackground
-      source={require("../assets/locationbg.jpg")}
+      source={require("../assets/savedlocationbg.jpg")}
       style={{ flex: 1 }}
       resizeMode="cover"
     >
@@ -243,10 +397,10 @@ const SavedLocationScreen = ({ navigation }) => {
           {/* Header - Only location icon */}
           <View style={styles.headerContainer}>
             <LinearGradient
-              colors={["#2E7D32", "#1B5E20"]}
+              colors={["#08610e", "#1B5E20"]}
               style={styles.headerIcon}
             >
-              <Ionicons name="location" size={30} color="#fff" />
+              <Ionicons name="pin" size={30} color="#fff" />
             </LinearGradient>
             <Text style={styles.headerTitle}>{t.yourFarms || 'Your Farms'}</Text>
             <Text style={styles.headerSubtitle}>{t.selectFarm || 'Select a farm to continue'}</Text>
@@ -266,15 +420,9 @@ const SavedLocationScreen = ({ navigation }) => {
             />
           ) : (
             <View style={styles.emptyContainer}>
-              <LinearGradient
-                colors={["#2E7D32", "#1B5E20"]}
-                style={styles.emptyIcon}
-              >
-                <Ionicons name="location-outline" size={50} color="#fff" />
-              </LinearGradient>
               <Text style={styles.emptyTitle}>{t.noFarmsYet || 'No Farms Yet'}</Text>
               <Text style={styles.emptyText}>
-                {t.addFirstFarm || 'You haven\'t added any farms yet. Add your first farm to get started.'}
+                 {t.addFirstFarm}
               </Text>
             </View>
           )}
@@ -467,20 +615,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 30,
   },
-  emptyIcon: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-    elevation: 8,
-  },
   emptyTitle: {
     fontSize: 22,
     fontWeight: 'bold',
     color: '#1B5E20',
     marginBottom: 10,
+    textAlign: 'center',
   },
   emptyText: {
     fontSize: 14,
@@ -490,8 +630,9 @@ const styles = StyleSheet.create({
   },
   // Add Button Styles
   addButtonContainer: {
-    marginTop: 10,
-    marginBottom: 15,
+    
+    marginTop: -100,
+    marginBottom: 200,
     borderRadius: 15,
     overflow: 'hidden',
     elevation: 5,

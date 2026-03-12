@@ -165,8 +165,8 @@ const LanguageScreen = ({ navigation }) => {
         >
           <View style={{ alignItems: "center", marginBottom: 30 }}>
             <Image
-              source={require("../assets/icon2.png")}
-              style={{ width: 250, height: 250 ,marginBottom:-60}}
+              source={require("../assets/icon.png")}
+              style={{ width: 300, height: 300 ,marginBottom:-80}}
               resizeMode="contain"
             />
             <Text

@@ -21,6 +21,7 @@ import { AppContext } from "../context/AppContext";
 import { SafeAreaView } from "react-native-safe-area-context";
 import FloatingChatbot from "../components/FloatingChatbot";
 
+
 const HomeScreen = ({ navigation }) => {
   const {
     t,
@@ -40,6 +41,7 @@ const HomeScreen = ({ navigation }) => {
   const [profileModalVisible, setProfileModalVisible] = useState(false);
   const [languageDropdownVisible, setLanguageDropdownVisible] = useState(false);
   const [locationDropdownVisible, setLocationDropdownVisible] = useState(false);
+ 
 
   // Set immersive mode
   useEffect(() => {
@@ -443,151 +445,113 @@ const HomeScreen = ({ navigation }) => {
                   paddingTop: 10,
                 }}
               >
-                {/* Location/Farm Section */}
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    paddingVertical: 12,
-                    position: "relative",
-                    zIndex: 2000,
-                  }}
-                >
-                  <Ionicons name="location" size={24} color="#2E7D32" />
-                  <View style={{ marginLeft: 15, flex: 1 }}>
-                    <Text style={{ fontSize: 16, fontWeight: "bold" }}>
-                      {t.currentFarm || "Current Farm"}:
-                    </Text>
-                    <Text style={{ color: "#666", fontWeight: "500" }}>
-                      {activeLocation?.name || t.noFarmSelected || "No farm selected"}
-                    </Text>
-                    {activeLocation?.address && (
-                      <Text style={{ color: "#999", fontSize: 12 }} numberOfLines={1}>
-                        {activeLocation.address}
-                      </Text>
-                    )}
-                  </View>
-                  
-                  {/* Location Dropdown */}
-                  <TouchableOpacity
-                    onPress={() => {
-                      setLocationDropdownVisible(!locationDropdownVisible);
-                      setLanguageDropdownVisible(false);
-                    }}
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      backgroundColor: "#f0f0f0",
-                      padding: 8,
-                      borderRadius: 10,
-                      minWidth: 100,
-                      justifyContent: "space-between",
-                    }}
-                  >
-                    <Text style={{ marginRight: 5, fontSize: 16, color: "#333" }}>
-                      {t.change || "Change"}
-                    </Text>
-                    <Ionicons 
-                      name={locationDropdownVisible ? "chevron-up" : "chevron-down"} 
-                      size={18} 
-                      color="#2E7D32"
-                    />
-                  </TouchableOpacity>
-                </View>
+               {/* Location/Farm Section - IMPROVED */}
+<View style={{ marginBottom: 15 }}>
+  <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 10 }}>
+    <Ionicons name="location" size={24} color="#2E7D32" />
+    <Text style={{ marginLeft: 10, fontSize: 16, fontWeight: "bold", color: "#333" }}>
+      {t.currentFarm || "Current Farm"}:
+    </Text>
+  </View>
+  
+  {/* Current Farm Display - ALWAYS VISIBLE */}
+  <View style={{
+    backgroundColor: "#E8F5E9",
+    padding: 15,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#4CAF50",
+    marginBottom: 10,
+  }}>
+    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontSize: 18, fontWeight: "bold", color: "#2E7D32" }}>
+          {activeLocation?.name || t.noFarmSelected || "No farm selected"}
+        </Text>
+        {activeLocation?.address && (
+          <Text style={{ color: "#666", fontSize: 13, marginTop: 4 }} numberOfLines={1}>
+            {activeLocation.address}
+          </Text>
+        )}
+      </View>
+      
+      {/* Always show farm count */}
+      <View style={{
+        backgroundColor: "#4CAF50",
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 15,
+      }}>
+        <Text style={{ color: "#fff", fontWeight: "bold", fontSize: 12 }}>
+          {savedLocations?.length || 0} {t.farms || "Farms"}
+        </Text>
+      </View>
+    </View>
+  </View>
 
-                {/* Location Dropdown Menu */}
-                {locationDropdownVisible && (
-                  <View
-                    style={{
-                      position: "absolute",
-                      right: 25,
-                      top: 90,
-                      backgroundColor: "#fff",
-                      borderRadius: 12,
-                      elevation: 8,
-                      shadowColor: "#000",
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.25,
-                      shadowRadius: 4,
-                      borderWidth: 1,
-                      borderColor: "#ddd",
-                      zIndex: 2500,
-                      width: 150,
-                      maxHeight: 200,
-                      overflow: "hidden",
-                    }}
-                  >
-                    <ScrollView>
-                      {savedLocations && savedLocations.length > 0 ? (
-                        savedLocations.map((loc) => (
-                          <TouchableOpacity
-                            key={loc.id}
-                            onPress={() => changeLocation(loc)}
-                            style={{
-                              paddingVertical: 15,
-                              paddingHorizontal: 15,
-                              borderBottomWidth: 1,
-                              borderBottomColor: "#f0f0f0",
-                              backgroundColor: activeLocation?.id === loc.id ? "#e8f5e9" : "#fff",
-                            }}
-                          >
-                            <Text style={{ 
-                              fontSize: 16,
-                              color: activeLocation?.id === loc.id ? "#2E7D32" : "#333",
-                              fontWeight: activeLocation?.id === loc.id ? "bold" : "normal",
-                              textAlign: "center",
-                            }}>
-                              {loc.name}
-                            </Text>
-                          </TouchableOpacity>
-                        ))
-                      ) : (
-                        <TouchableOpacity
-                          onPress={() => {
-                            setLocationDropdownVisible(false);
-                            setProfileModalVisible(false);
-                            navigation.navigate("SavedLocations");
-                          }}
-                          style={{
-                            paddingVertical: 15,
-                            paddingHorizontal: 15,
-                            alignItems: "center",
-                          }}
-                        >
-                          <Text style={{ color: "#2E7D32", fontSize: 14, textAlign: "center" }}>
-                            + {t.addNewFarm || "Add New Farm"}
-                          </Text>
-                        </TouchableOpacity>
-                      )}
-                      
-                      {/* Option to go to Saved Locations */}
-                      <TouchableOpacity
-                        onPress={() => {
-                          setLocationDropdownVisible(false);
-                          setProfileModalVisible(false);
-                          navigation.navigate("SavedLocations");
-                        }}
-                        style={{
-                          paddingVertical: 12,
-                          paddingHorizontal: 15,
-                          borderTopWidth: 1,
-                          borderTopColor: "#f0f0f0",
-                          backgroundColor: "#f9f9f9",
-                          alignItems: "center",
-                        }}
-                      >
-                        <Text style={{ 
-                          fontSize: 13,
-                          color: "#2E7D32",
-                          fontWeight: "600",
-                          textAlign: "center",
-                        }}>
-                          {t.manageFarms || "Manage Farms"}
-                        </Text>
-                      </TouchableOpacity>
-                    </ScrollView>
-                  </View>
-                )}
+  {/* Quick Switch Dropdown - Only shows if MULTIPLE farms exist (2 or more) */}
+  {savedLocations && savedLocations.length > 1 && (
+    <View>
+      <Text style={{ fontSize: 14, color: "#666", marginBottom: 8 }}>
+        {t.quickSwitch || "Quick Switch:"}
+      </Text>
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false}
+        style={{ flexDirection: "row" }}
+      >
+        {savedLocations.map((loc) => (
+          <TouchableOpacity
+            key={loc.id}
+            onPress={() => {
+              changeLocation(loc);
+              setProfileModalVisible(false); // Close modal after selection
+            }}
+            style={{
+              backgroundColor: activeLocation?.id === loc.id ? "#2E7D32" : "#f0f0f0",
+              paddingHorizontal: 16,
+              paddingVertical: 10,
+              borderRadius: 25,
+              marginRight: 10,
+              borderWidth: 1,
+              borderColor: activeLocation?.id === loc.id ? "#1B5E20" : "#ddd",
+            }}
+          >
+            <Text style={{ 
+              color: activeLocation?.id === loc.id ? "#fff" : "#333",
+              fontWeight: "600",
+              fontSize: 14,
+            }}>
+              {loc.name}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
+  )}
+
+  {/* "Manage All Farms" Button - ALWAYS VISIBLE */}
+  <TouchableOpacity
+    onPress={() => {
+      setProfileModalVisible(false);
+      navigation.navigate("SavedLocations");
+    }}
+    style={{
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: "#4CAF50",
+      padding: 12,
+      borderRadius: 10,
+      marginTop: 15,
+    }}
+  >
+    <Ionicons name="list" size={20} color="#fff" />
+    <Text style={{ color: "#fff", fontWeight: "bold", marginLeft: 8, fontSize: 15 }}>
+      {t.manageAllFarms || "Manage All Farms"}
+    </Text>
+  </TouchableOpacity>
+</View>
 
                 <View
                   style={{

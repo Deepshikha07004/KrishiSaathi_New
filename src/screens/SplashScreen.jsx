@@ -75,7 +75,7 @@ const Splash = () => {
             }}
           >
             <Image
-              source={require("../assets/splash-icon.png")}
+              source={require("../assets/icon.png")}
               style={{
                 height: 350,
                 width: 350,

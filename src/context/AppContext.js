@@ -8,16 +8,20 @@ export const AppContext = createContext();
 export const AppProvider = ({ children }) => {
     const [lang, setLang] = useState('en');
     const [user, setUser] = useState(null);
+    const [userId, setUserId] = useState(null); // 👈 ONLY ADDED THIS LINE
     const [location, setLocation] = useState(null);
     const [isChatVisible, setChatVisible] = useState(false);
     const [chatType, setChatType] = useState('General');
     const [pinnedMessage, setPinnedMessage] = useState(null);
     const [isManualLocation, setIsManualLocation] = useState(false);
     const [chatBackground, setChatBackground] = useState(null);
-    const [weatherData, setWeatherData] = useState(null); // Added for weather
+    const [weatherData, setWeatherData] = useState(null);
     // 👇 ADDED: For saved locations and active farm
     const [savedLocations, setSavedLocations] = useState([]);
     const [activeLocation, setActiveLocation] = useState(null);
+    
+    // 👇 NEW: Add sownCrops state for StorageScreen
+    const [sownCrops, setSownCrops] = useState([]); // Initialize as empty array
 
     const digitsMap = {
         hi: ["०", "१", "२", "३", "४", "५", "६", "७", "८", "९"],
@@ -128,7 +132,7 @@ export const AppProvider = ({ children }) => {
         return () => {
             if (watcher && watcher.remove) watcher.remove();
         };
-    }, [isManualLocation]); // Removed lang dependency as it's not needed
+    }, [isManualLocation]);
 
     return (
         <AppContext.Provider value={{
@@ -137,6 +141,8 @@ export const AppProvider = ({ children }) => {
             t, 
             user, 
             setUser, 
+            userId, // 👈 ADDED THIS LINE
+            setUserId, // 👈 ADDED THIS LINE
             location, 
             setLocation,
             isChatVisible, 
@@ -156,7 +162,10 @@ export const AppProvider = ({ children }) => {
             savedLocations,
             setSavedLocations,
             activeLocation,
-            setActiveLocation
+            setActiveLocation,
+            // 👇 NEW: Add sownCrops to provider value
+            sownCrops,
+            setSownCrops
         }}>
             {children}
         </AppContext.Provider>

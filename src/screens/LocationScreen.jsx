@@ -4,7 +4,7 @@ import React, { useState, useContext, useEffect, useRef } from "react";
 import {
   View, Text, TouchableOpacity, ScrollView, ActivityIndicator,
   Alert, TextInput, Platform, Vibration, Keyboard, ImageBackground, KeyboardAvoidingView,
-  StyleSheet, FlatList, Modal
+  StyleSheet, FlatList, Modal, Dimensions
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
@@ -14,6 +14,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AppContext } from "../context/AppContext";
 import { useFocusEffect } from '@react-navigation/native';
+
+const { width } = Dimensions.get('window');
 
 const LocationScreen = ({ navigation }) => {
   const { t, setLocation, lang, isManualLocation, setIsManualLocation, convertDigits, setActiveLocation } = useContext(AppContext);
@@ -31,10 +33,15 @@ const LocationScreen = ({ navigation }) => {
   const [mapRegion, setMapRegion] = useState(null);
   const [showMap, setShowMap] = useState(false);
   
-  // Manual mode states
+  // Manual mode states - COMPLETELY SEPARATE
   const [isManualMode, setIsManualMode] = useState(false);
+  const [autoModeActive, setAutoModeActive] = useState(true);
   const [manualAddress, setManualAddress] = useState("");
   const [manualLocationDetails, setManualLocationDetails] = useState(null);
+  // Separate states for manual mode errors
+  const [manualError, setManualError] = useState(false);
+  const [manualErrorMessage, setManualErrorMessage] = useState("");
+  const [isManualSubmitting, setIsManualSubmitting] = useState(false);
 
   // Farm name state - REQUIRED for new location
   const [farmName, setFarmName] = useState("");
@@ -59,7 +66,6 @@ const LocationScreen = ({ navigation }) => {
   useFocusEffect(
     React.useCallback(() => {
       console.log('Screen focused');
-      loadSavedLocations();
       
       // Clean up speech when screen comes into focus
       Speech.stop();
@@ -89,15 +95,13 @@ const LocationScreen = ({ navigation }) => {
     };
   }, []);
 
-  // Load saved locations from backend
+  // Load saved locations from backend (for hamburger menu)
   const loadSavedLocations = async () => {
     try {
-      // Get user's saved locations from backend
       const response = await fetch(`${BACKEND_API_URL}/user/locations`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          // Add auth token if needed
         },
       });
 
@@ -110,50 +114,15 @@ const LocationScreen = ({ navigation }) => {
     }
   };
 
-  // Save location to backend (called after both auto and manual modes)
-  const saveLocationToBackend = async (locationData, isManual = false) => {
-    try {
-      // If locationName is empty, create a default name
-      const nameToSave = locationName.trim() || 
-        (isManual ? "Manual Address" : "Current Location");
-      
-      const response = await fetch(`${BACKEND_API_URL}/user/locations`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: nameToSave,
-          address: locationData.formatted_address || locationData.place_name || manualAddress,
-          details: locationData,
-          coordinates: coordinates,
-          isManual: isManual,
-          timestamp: Date.now()
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        Alert.alert('Success', 'Location saved successfully');
-        loadSavedLocations(); // Reload locations
-        setIsAddingLocation(false);
-        setLocationName("");
-      }
-    } catch (error) {
-      console.log('Error saving location:', error);
-      Alert.alert('Error', 'Failed to save location');
-    }
-  };
-
   // Delete location from backend
   const deleteLocation = async (locationId) => {
     Alert.alert(
-      'Delete Location',
-      'Are you sure you want to delete this location?',
+      t.delete || 'Delete Location',
+      t.deleteConfirm || 'Are you sure you want to delete this location?',
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t.cancel || 'Cancel', style: 'cancel' },
         {
-          text: 'Delete',
+          text: t.delete || 'Delete',
           style: 'destructive',
           onPress: async () => {
             try {
@@ -175,80 +144,6 @@ const LocationScreen = ({ navigation }) => {
       ]
     );
   };
-
-  // Language-specific messages
-  const messages = {
-    en: {
-      digits: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
-      locating: "Getting your location...",
-      locationFound: "Location found successfully",
-      locationFailed: "Failed to get location. Please try again.",
-      permissionDenied: "Location permission denied. Please enable in settings.",
-      enterManually: "Enter Manually",
-      detectAutomatically: "Detect Automatically",
-      confirmLocation: "CONFIRM LOCATION",
-      placeName: "Place Name",
-      fullAddress: "Full Address",
-      district: "District",
-      state: "State",
-      pinCode: "PIN Code",
-      youAreHere: "You are here",
-      locationActive: "LOCATION ACTIVE",
-      manualMode: "MANUAL MODE ACTIVE",
-      useGPS: "Use GPS",
-      detecting: "Detecting...",
-      detectAgain: "Detect Again",
-      continue: "Continue",
-      live: "LIVE",
-      accuracy: "Accuracy",
-      meters: "meters",
-      selectLocation: "Select Your Farm Location",
-      latitude: "Latitude",
-      longitude: "Longitude",
-      unknown: "Unknown location",
-      error: "Error",
-      pleaseFillFields: "Please fill in all required fields",
-      speaking: "Speaking...",
-      enterManuallyTitle: "Enter Location Manually",
-      city: "City",
-      country: "Country",
-      searching: "Searching...",
-      usingGPS: "Using GPS...",
-      getCurrentLocation: "Get Current Location",
-      gpsAcquired: "GPS Location Acquired",
-      retry: "Try Again",
-      findOnMap: "Find on Map",
-      enterAddress: "Enter your address",
-      sendingToServer: "Getting location details...",
-      serverError: "Something went wrong. Please try again.",
-      retryButton: "Try Again",
-      manualAddressPlaceholder: "Enter your address manually",
-      getLocationButton: "Get My Location",
-      mapLoading: "Loading map...",
-      locationOnMap: "Your farm location on map",
-      enterFarmName: "Enter your farm name (e.g., My Farm, Home, Shop)",
-      farmNameRequired: "Please enter a farm name",
-      savingLocation: "Saving your farm...",
-      locationSaved: "Location saved successfully",
-      // New strings for multiple locations
-      savedLocations: "Saved Locations",
-      addNewLocation: "Add New Location",
-      useCurrentLocation: "Use Current Location",
-      saveLocation: "Save Location",
-      locationName: "Location Name",
-      deliveryHere: "Deliver Here",
-      edit: "Edit",
-      delete: "Delete",
-      otherAddresses: "Other Addresses",
-      saveThisLocation: "Save this location?",
-      enterNameForLocation: "Enter a name for this location (e.g., My Farm, Home, Shop)",
-      notNow: "Not Now",
-      // 👇 ADDED: Skip button text
-      skip: "SKIP TO HOME (TEMP)",
-    }
-  };
-
-  const msg = messages.en;
 
   // ============ LOCATION DETECTION ============
 
@@ -351,18 +246,18 @@ const LocationScreen = ({ navigation }) => {
   const saveAndActivateLocation = async () => {
     // Validate farm name
     if (!farmName.trim()) {
-      Alert.alert(msg.error, msg.farmNameRequired);
+      Alert.alert(t.error, t.farmNameRequired);
       return false;
     }
 
     // Validate that we have location data
     if (!locationDetails || !coordinates) {
-      Alert.alert(msg.error, "Please detect your location first");
+      Alert.alert(t.error, t.locationNotFound || "Please detect your location first");
       return false;
     }
 
     setIsGettingLocation(true);
-    speak(msg.savingLocation);
+    speak(t.savingLocation);
 
     try {
       // Prepare location data
@@ -373,10 +268,12 @@ const LocationScreen = ({ navigation }) => {
         coordinates: coordinates,
         isManual: isManualMode,
         isActive: true,
+        userId: userId,
         timestamp: Date.now()
       };
 
-      const response = await fetch(`${BACKEND_API_URL}/user/locations/save-and-activate`, {
+      // Save to backend - ONE API CALL
+      const response = await fetch(`${BACKEND_API_URL}/user/locations`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -393,9 +290,9 @@ const LocationScreen = ({ navigation }) => {
       // Update context with active location
       setActiveLocation(savedLocation);
 
-      speak(msg.locationFound);
+      speak(t.locationFound);
       
-      // IMMEDIATELY stop speech before navigation
+      // Stop speech
       Speech.stop();
       setIsSpeakerSpeaking(false);
       
@@ -405,7 +302,7 @@ const LocationScreen = ({ navigation }) => {
       return true;
     } catch (error) {
       console.log("Error saving location:", error);
-      Alert.alert(msg.error, msg.serverError);
+      Alert.alert(t.error, t.serverError);
       return false;
     } finally {
       setIsGettingLocation(false);
@@ -445,32 +342,68 @@ const LocationScreen = ({ navigation }) => {
     setShowMap(true);
   };
 
-  // speak function
+  // FIXED speak function - Better Hindi pronunciation
   const speak = (msg) => {
-    if (isMuted) return;
+    if (isMuted || !msg) return;
     
+    // Stop any ongoing speech
     Speech.stop();
-    setIsSpeakerSpeaking(true);
     
-    Speech.speak(msg, { 
-      rate: 1.0, 
-      pitch: 1.0, 
-      language: lang === "hi" ? "hi-IN" : lang === "bn" ? "bn-IN" : "en-US",
+    // Map language codes based on selected language
+    let languageCode = 'en-US'; // default English
+    
+    if (lang === 'hi') {
+      languageCode = 'hi-IN'; // Hindi
+    } else if (lang === 'bn') {
+      languageCode = 'bn-IN'; // Bengali
+    }
+    
+    console.log('Speaking in:', languageCode, 'Message:', msg);
+    
+    // Speech options for better pronunciation
+    const speechOptions = {
+      language: languageCode,
+      pitch: 1.0,
+      rate: 0.75, // Slower rate for better clarity in Hindi/Bengali
+      onStart: () => {
+        console.log('Speech started');
+        setIsSpeakerSpeaking(true);
+      },
       onDone: () => {
+        console.log('Speech finished');
         setIsSpeakerSpeaking(false);
       },
-      onError: () => {
+      onError: (error) => {
+        console.log('Speech error:', error);
         setIsSpeakerSpeaking(false);
+        
+        // Fallback to English
+        if (languageCode !== 'en-US') {
+          console.log('Falling back to English');
+          Speech.speak(msg, {
+            language: 'en-US',
+            pitch: 1.0,
+            rate: 0.8,
+            onStart: () => setIsSpeakerSpeaking(true),
+            onDone: () => setIsSpeakerSpeaking(false),
+            onError: () => setIsSpeakerSpeaking(false)
+          });
+        }
       }
-    });
+    };
+    
+    Speech.speak(msg, speechOptions);
   };
 
   const toggleMute = () => {
-    if (!isMuted) {
+    const newMutedState = !isMuted;
+    setIsMuted(newMutedState);
+    
+    if (newMutedState) {
+      // If muting, stop any ongoing speech
       Speech.stop();
       setIsSpeakerSpeaking(false);
     }
-    setIsMuted(!isMuted);
   };
 
   useEffect(() => {
@@ -487,14 +420,37 @@ const LocationScreen = ({ navigation }) => {
     if (isMuted) return;
     
     if (apiError) {
-      speak(msg.serverError);
+      speak(t.serverError);
     } else if (permissionDenied) {
-      speak(msg.permissionDenied);
+      speak(t.permissionDenied);
     }
   }, [apiError, permissionDenied, isMuted]);
 
-  // Main function to get location (auto mode) - FASTER
+  // Reset errors when switching modes
+  useEffect(() => {
+    setApiError(false);
+    setPermissionDenied(false);
+    setManualError(false);
+    setManualErrorMessage("");
+  }, [isManualMode]);
+
+  // Auto-detect on mount if auto mode is active
+  useEffect(() => {
+    if (autoModeActive && !isManualMode) {
+      getLocation(true);
+    }
+
+    return () => {
+      Speech.stop();
+      speechInProgressRef.current = false;
+    };
+  }, [autoModeActive, isManualMode]);
+
+  // Main function to get location (auto mode)
   const getLocation = async (quick = true) => {
+    // Don't run if in manual mode or auto mode is not active
+    if (isManualMode || !autoModeActive) return;
+    
     if (Platform.OS !== "web") Vibration.vibrate(30);
     
     setIsGettingLocation(true);
@@ -502,7 +458,7 @@ const LocationScreen = ({ navigation }) => {
     setApiError(false);
     setShowMap(false);
     
-    speak(msg.usingGPS);
+    speak(t.usingGPS);
 
     try {
       // Step 1: Get coordinates from device (faster with quick=true)
@@ -522,7 +478,7 @@ const LocationScreen = ({ navigation }) => {
       // Step 3: Show map immediately with coordinates and "You are here" marker
       updateMapWithCoordinates(coords.latitude, coords.longitude);
 
-      speak(msg.sendingToServer);
+      speak(t.sendingToServer);
 
       // Step 4: Send to backend for reverse geocoding
       const locationData = await getLocationFromBackend(
@@ -545,29 +501,40 @@ const LocationScreen = ({ navigation }) => {
         longitudeDelta: 0.01
       });
 
-      speak(msg.locationFound);
+      speak(t.locationFound);
       setApiError(false);
       
     } catch (error) {
       console.log("Location flow error:", error);
       setApiError(true);
-      Alert.alert(msg.error, msg.serverError);
-      speak(msg.locationFailed);
+      speak(t.locationFailed);
     } finally {
       setIsGettingLocation(false);
     }
   };
 
-  // Handle manual address submission
+  // FIXED: Handle manual address submission - Voice works exactly like auto mode
   const handleManualSubmit = async () => {
+    // Check if address is empty
     if (!manualAddress.trim()) {
-      Alert.alert(msg.error, msg.pleaseFillFields);
+      setManualError(true);
+      setManualErrorMessage(t.pleaseFillFields || "Please enter an address");
+      requestAnimationFrame(() => {
+        speak(t.pleaseFillFields || "Please enter an address");
+      });
       return;
     }
 
-    setIsGettingLocation(true);
+    // Set loading state for manual mode
+    setIsManualSubmitting(true);
+    setManualError(false);
+    setManualErrorMessage("");
+    setMapRegion(null);
     setShowMap(false);
-    setApiError(false);
+    
+    requestAnimationFrame(() => {
+      speak(t.sendingToServer);
+    });
     
     try {
       const data = await geocodeAddressWithBackend(manualAddress);
@@ -590,24 +557,31 @@ const LocationScreen = ({ navigation }) => {
         longitudeDelta: 0.01
       });
 
-      speak(msg.locationFound);
-      setApiError(false);
+      requestAnimationFrame(() => {
+        speak(t.locationFound);
+      });
+      setManualError(false);
       
     } catch (error) {
       console.log("Manual submission error:", error);
-      setApiError(true);
-      Alert.alert(msg.error, msg.serverError);
+      setManualError(true);
+      setManualErrorMessage(t.serverError || "Something went wrong. Please try again.");
+      setShowMap(false);
+      
+      requestAnimationFrame(() => {
+        speak(t.serverError);
+      });
     } finally {
-      setIsGettingLocation(false);
+      setIsManualSubmitting(false);
     }
   };
 
-  // Select a saved location
+  // Select a saved location from hamburger menu
   const selectSavedLocation = (location) => {
     setSelectedLocation(location);
     setCoordinates(location.coordinates);
     setLocationDetails(location.details);
-    setFarmName(location.name); // Set farm name from saved location
+    setFarmName(location.name);
     updateMapWithCoordinates(location.coordinates.latitude, location.coordinates.longitude);
     setShowLocationMenu(false);
     
@@ -620,19 +594,6 @@ const LocationScreen = ({ navigation }) => {
     });
   };
 
-  // Confirm location and navigate
-  const confirmLocation = () => {
-    if (locationDetails || manualLocationDetails || selectedLocation) {
-      speak(msg.continue);
-      
-      // IMMEDIATELY stop speech before navigation
-      Speech.stop();
-      setIsSpeakerSpeaking(false);
-      
-      navigation.replace("Home");
-    }
-  };
-
   const formatCoordinate = (coordinate) => {
     if (!coordinate) return "";
     return coordinate.toFixed(6);
@@ -640,20 +601,8 @@ const LocationScreen = ({ navigation }) => {
 
   const formatAccuracy = (accuracy) => {
     if (!accuracy) return "";
-    return `${accuracy.toFixed(2)} ${msg.meters}`;
+    return `${accuracy.toFixed(2)} ${t.meters}`;
   };
-
-  // Auto-detect on mount if not in manual mode
-  useEffect(() => {
-    if (!isManualMode && savedLocations.length === 0) {
-      getLocation(true); // true = quick mode
-    }
-
-    return () => {
-      Speech.stop();
-      speechInProgressRef.current = false;
-    };
-  }, [isManualMode]);
 
   // Check if confirm button should be enabled
   const isConfirmEnabled = () => {
@@ -721,7 +670,7 @@ const LocationScreen = ({ navigation }) => {
             contentContainerStyle={{ paddingBottom: 40, flexGrow: 1 }}
             keyboardShouldPersistTaps="handled"
           >
-            {/* Location Icon and Title - Separate container */}
+            {/* Location Icon and Title */}
             <View style={styles.locationIconContainer}>
               <LinearGradient
                 colors={["#2E7D32", "#1B5E20"]}
@@ -730,85 +679,61 @@ const LocationScreen = ({ navigation }) => {
                 <Ionicons name="compass" size={40} color="#fff" />
               </LinearGradient>
               <Text style={styles.titleText}>
-                {msg.selectLocation}
+                {t.selectLocation}
               </Text>
             </View>
 
-            {/* 👇 ADDED: Temporary Skip Button */}
+            {/* Temporary Skip Button */}
             <View style={{ paddingHorizontal: 20, marginBottom: 15 }}>
               <TouchableOpacity
                 onPress={skipToHome}
-                style={{
-                  backgroundColor: "#9C27B0",
-                  padding: 15,
-                  borderRadius: 12,
-                  alignItems: "center",
-                  elevation: 5,
-                  flexDirection: 'row',
-                  justifyContent: 'center',
-                }}
+                style={styles.skipButton}
               >
                 <Ionicons name="arrow-forward-circle" size={24} color="#fff" style={{ marginRight: 8 }} />
-                <Text style={{ color: "#fff", fontWeight: "bold", fontSize: 16 }}>
-                  {msg.skip}
+                <Text style={styles.skipButtonText}>
+                  {t.skip}
                 </Text>
               </TouchableOpacity>
             </View>
 
             {/* Loading/Status Indicator */}
-            {isGettingLocation && (
+            {isGettingLocation && !isManualMode && (
               <View style={{ paddingHorizontal: 20, marginBottom: 10 }}>
-                <View style={{
-                  backgroundColor: "#E3F2FD",
-                  padding: 15,
-                  borderRadius: 10,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
+                <View style={styles.loadingIndicator}>
                   <ActivityIndicator size="small" color="#1976D2" />
-                  <Text style={{ marginLeft: 10, color: "#1976D2", fontWeight: "600" }}>
-                    {msg.sendingToServer}
+                  <Text style={styles.loadingIndicatorText}>
+                    {t.sendingToServer}
                   </Text>
                 </View>
               </View>
             )}
 
-            {/* Error Display */}
-            {apiError && !isGettingLocation && (
+            {isManualSubmitting && isManualMode && (
               <View style={{ paddingHorizontal: 20, marginBottom: 10 }}>
-                <View style={{
-                  backgroundColor: "#FFEBEE",
-                  padding: 20,
-                  borderRadius: 10,
-                  borderWidth: 1,
-                  borderColor: "#FF5252",
-                  alignItems: "center"
-                }}>
+                <View style={[styles.loadingIndicator, { backgroundColor: "#FFF3E0" }]}>
+                  <ActivityIndicator size="small" color="#FF9800" />
+                  <Text style={[styles.loadingIndicatorText, { color: "#F57C00" }]}>
+                    {t.sendingToServer}
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {/* Auto Mode Error Display */}
+            {apiError && !isGettingLocation && !isManualMode && autoModeActive && (
+              <View style={{ paddingHorizontal: 20, marginBottom: 10 }}>
+                <View style={styles.errorContainer}>
                   <Ionicons name="alert-circle" size={40} color="#D32F2F" />
-                  <Text style={{ 
-                    color: "#D32F2F", 
-                    textAlign: "center", 
-                    fontSize: 16,
-                    marginTop: 10,
-                    marginBottom: 15
-                  }}>
-                    {msg.serverError}
+                  <Text style={styles.errorText}>
+                    {t.serverError}
                   </Text>
                   <TouchableOpacity
-                    onPress={isManualMode ? handleManualSubmit : () => getLocation(true)}
-                    style={{
-                      backgroundColor: "#2196F3",
-                      paddingVertical: 12,
-                      paddingHorizontal: 30,
-                      borderRadius: 8,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                    }}
+                    onPress={() => getLocation(true)}
+                    style={styles.retryButton}
                   >
                     <Ionicons name="refresh" size={20} color="#fff" style={{ marginRight: 8 }} />
-                    <Text style={{ color: "#fff", fontWeight: "bold", fontSize: 16 }}>
-                      {msg.retryButton}
+                    <Text style={styles.retryButtonText}>
+                      {t.retryButton}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -816,32 +741,41 @@ const LocationScreen = ({ navigation }) => {
             )}
 
             {/* Permission Denied */}
-            {permissionDenied && !isGettingLocation && !apiError && (
+            {permissionDenied && !isGettingLocation && !apiError && !isManualMode && autoModeActive && (
               <View style={{ paddingHorizontal: 20, marginBottom: 10 }}>
-                <View style={{
-                  backgroundColor: "#FFEBEE",
-                  padding: 20,
-                  borderRadius: 10,
-                  alignItems: "center"
-                }}>
+                <View style={styles.permissionDeniedContainer}>
                   <Ionicons name="ban" size={40} color="#FF5252" />
-                  <Text style={{ color: "#D32F2F", textAlign: "center", marginTop: 10, fontSize: 16, marginBottom: 15 }}>
-                    {msg.permissionDenied}
+                  <Text style={styles.permissionDeniedText}>
+                    {t.permissionDenied}
                   </Text>
                   <TouchableOpacity
                     onPress={() => getLocation(true)}
-                    style={{
-                      backgroundColor: "#2196F3",
-                      paddingVertical: 12,
-                      paddingHorizontal: 30,
-                      borderRadius: 8,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                    }}
+                    style={styles.retryButton}
                   >
                     <Ionicons name="refresh" size={20} color="#fff" style={{ marginRight: 8 }} />
-                    <Text style={{ color: "#fff", fontWeight: "bold" }}>
-                      {msg.retry}
+                    <Text style={styles.retryButtonText}>
+                      {t.retry}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {/* Manual Mode Error */}
+            {manualError && !isManualSubmitting && isManualMode && (
+              <View style={{ paddingHorizontal: 20, marginBottom: 10 }}>
+                <View style={[styles.errorContainer, { backgroundColor: "#FFF3E0", borderColor: "#FF9800" }]}>
+                  <Ionicons name="alert-circle" size={40} color="#FF9800" />
+                  <Text style={[styles.errorText, { color: "#F57C00" }]}>
+                    {manualErrorMessage || t.serverError}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={handleManualSubmit}
+                    style={[styles.retryButton, { backgroundColor: "#FF9800" }]}
+                  >
+                    <Ionicons name="refresh" size={20} color="#fff" style={{ marginRight: 8 }} />
+                    <Text style={styles.retryButtonText}>
+                      {t.retryButton}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -849,186 +783,156 @@ const LocationScreen = ({ navigation }) => {
             )}
 
             {/* Mode Toggle */}
-            {!apiError && !permissionDenied && (
-              <View style={{ paddingHorizontal: 20, marginBottom: 20 }}>
-                <View style={{
-                  flexDirection: "row",
-                  backgroundColor: "#fff",
-                  borderRadius: 15,
-                  padding: 5,
-                  elevation: 3
-                }}>
-                  <TouchableOpacity
-                    onPress={() => setIsManualMode(false)}
-                    style={{
-                      flex: 1,
-                      paddingVertical: 12,
-                      borderRadius: 12,
-                      backgroundColor: !isManualMode ? "#2E7D32" : "transparent",
-                      alignItems: "center",
-                      flexDirection: 'row',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <Ionicons 
-                      name="locate" 
-                      size={18} 
-                      color={!isManualMode ? "#fff" : "#666"} 
-                      style={{ marginRight: 6 }}
-                    />
-                    <Text style={{
-                      fontWeight: "bold",
-                      color: !isManualMode ? "#fff" : "#666"
-                    }}>
-                      {msg.detectAutomatically}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => setIsManualMode(true)}
-                    style={{
-                      flex: 1,
-                      paddingVertical: 12,
-                      borderRadius: 12,
-                      backgroundColor: isManualMode ? "#2E7D32" : "transparent",
-                      alignItems: "center",
-                      flexDirection: 'row',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <Ionicons 
-                      name="create" 
-                      size={18} 
-                      color={isManualMode ? "#fff" : "#666"} 
-                      style={{ marginRight: 6 }}
-                    />
-                    <Text style={{
-                      fontWeight: "bold",
-                      color: isManualMode ? "#fff" : "#666"
-                    }}>
-                      {msg.enterManually}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
+            <View style={{ paddingHorizontal: 20, marginBottom: 20 }}>
+              <View style={styles.modeToggleContainer}>
+                <TouchableOpacity
+                  onPress={() => {
+                    setIsManualMode(false);
+                    setAutoModeActive(true);
+                    setApiError(false);
+                    setPermissionDenied(false);
+                    setManualError(false);
+                    setManualErrorMessage("");
+                    getLocation(true);
+                  }}
+                  style={[
+                    styles.modeToggleButton,
+                    !isManualMode && styles.modeToggleButtonActive
+                  ]}
+                >
+                  <Ionicons 
+                    name="locate" 
+                    size={20} 
+                    color={!isManualMode ? "#fff" : "#666"} 
+                    style={{ marginRight: 8 }}
+                  />
+                  <Text style={[
+                    styles.modeToggleText,
+                    !isManualMode && styles.modeToggleTextActive
+                  ]}
+                  numberOfLines={2}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.8}>
+                    {t.detectAutomatically}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => {
+                    setIsManualMode(true);
+                    setAutoModeActive(false);
+                    setApiError(false);
+                    setPermissionDenied(false);
+                    setManualError(false);
+                    setManualErrorMessage("");
+                    setMapRegion(null);
+                    setShowMap(false);
+                    setCoordinates(null);
+                    Speech.stop();
+                  }}
+                  style={[
+                    styles.modeToggleButton,
+                    isManualMode && styles.modeToggleButtonActive
+                  ]}
+                >
+                  <Ionicons 
+                    name="create" 
+                    size={20} 
+                    color={isManualMode ? "#fff" : "#666"} 
+                    style={{ marginRight: 8 }}
+                  />
+                  <Text style={[
+                    styles.modeToggleText,
+                    isManualMode && styles.modeToggleTextActive
+                  ]}
+                  numberOfLines={2}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.8}>
+                    {t.enterManually}
+                  </Text>
+                </TouchableOpacity>
               </View>
-            )}
+            </View>
 
             {/* Main Content */}
             {!apiError && !permissionDenied && (
               <View style={{ paddingHorizontal: 20 }}>
                 {isManualMode ? (
                   /* Manual Mode Input */
-                  <View style={{
-                    backgroundColor: "rgba(255,255,255,0.95)",
-                    borderRadius: 25,
-                    padding: 25,
-                    elevation: 8,
-                    borderWidth: 1,
-                    borderColor: "#4CAF50",
-                    marginBottom: 20
-                  }}>
-                    <Text style={{
-                      fontSize: 20,
-                      fontWeight: "bold",
-                      color: "#1B5E20",
-                      marginBottom: 20,
-                      textAlign: "center"
-                    }}>
-                      {msg.enterManuallyTitle}
+                  <View style={styles.manualModeContainer}>
+                    <Text style={styles.manualModeTitle}>
+                      {t.enterManuallyTitle}
                     </Text>
 
                     <TextInput
-                      style={{
-                        backgroundColor: "#F5F5F5",
-                        borderRadius: 10,
-                        padding: 15,
-                        fontSize: 16,
-                        color: "#333",
-                        minHeight: 100,
-                        textAlignVertical: "top"
-                      }}
-                      placeholder={msg.manualAddressPlaceholder}
+                      style={[
+                        styles.manualModeInput,
+                        manualError && { borderColor: "#FF9800" }
+                      ]}
+                      placeholder={t.manualAddressPlaceholder || "Enter your address manually"}
                       placeholderTextColor="#999"
                       value={manualAddress}
-                      onChangeText={setManualAddress}
+                      onChangeText={(text) => {
+                        setManualAddress(text);
+                        if (manualError) {
+                          setManualError(false);
+                          setManualErrorMessage("");
+                        }
+                      }}
                       multiline={true}
                       numberOfLines={4}
+                      textAlignVertical="top"
+                      editable={!isManualSubmitting}
+                      autoFocus={true}
+                      returnKeyType="done"
+                      blurOnSubmit={false}
                     />
+
+                    {manualError && (
+                      <Text style={{ color: "#FF9800", fontSize: 12, marginTop: 5, marginLeft: 5 }}>
+                        {manualErrorMessage || "Please check your address and try again"}
+                      </Text>
+                    )}
 
                     <TouchableOpacity
                       onPress={handleManualSubmit}
-                      disabled={isGettingLocation}
-                      style={{
-                        backgroundColor: "#FF9800",
-                        padding: 15,
-                        borderRadius: 12,
-                        alignItems: "center",
-                        marginTop: 20,
-                        opacity: isGettingLocation ? 0.5 : 1,
-                        flexDirection: 'row',
-                        justifyContent: 'center',
-                      }}
+                      disabled={isManualSubmitting || !manualAddress.trim()}
+                      style={[styles.findOnMapButton, (isManualSubmitting || !manualAddress.trim()) && styles.disabledButton]}
+                      activeOpacity={0.7}
                     >
-                      <Ionicons name="map" size={20} color="#fff" style={{ marginRight: 8 }} />
-                      <Text style={{ color: "#fff", fontWeight: "bold", fontSize: 16 }}>
-                        {msg.findOnMap}
+                      <Text style={styles.findOnMapButtonText}>
+                        {isManualSubmitting ? 'Processing...' : (t.detectLocation || "Detect Location")}
                       </Text>
                     </TouchableOpacity>
                   </View>
                 ) : (
-                  /* Auto Mode - Get Location Button (only show if no location yet) */
+                  /* Auto Mode - Get Location Button */
                   !locationDetails && !isGettingLocation && (
                     <TouchableOpacity
                       onPress={() => getLocation(true)}
                       disabled={isGettingLocation}
-                      style={{
-                        backgroundColor: "#2196F3",
-                        padding: 15,
-                        borderRadius: 12,
-                        flexDirection: "row",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        marginBottom: 20,
-                        opacity: isGettingLocation ? 0.5 : 1
-                      }}
+                      style={[styles.getLocationButton, isGettingLocation && styles.disabledButton]}
+                      activeOpacity={0.7}
                     >
                       <Ionicons name="locate" size={24} color="#fff" />
-                      <Text style={{ color: "#fff", fontWeight: "bold", fontSize: 16, marginLeft: 10 }}>
-                        {msg.getLocationButton}
+                      <Text style={styles.getLocationButtonText}>
+                        {t.getLocationButton}
                       </Text>
                     </TouchableOpacity>
                   )
                 )}
 
-                {/* Farm Name Input - REQUIRED field shown when location is detected */}
-                {locationDetails && !isGettingLocation && (
-                  <View style={{
-                    backgroundColor: "rgba(255,255,255,0.95)",
-                    borderRadius: 25,
-                    padding: 20,
-                    elevation: 8,
-                    borderWidth: 1,
-                    borderColor: "#4CAF50",
-                    marginBottom: 20
-                  }}>
-                    <Text style={{
-                      fontSize: 16,
-                      fontWeight: "600",
-                      color: "#1B5E20",
-                      marginBottom: 10
-                    }}>
-                      {msg.enterFarmName} <Text style={{color: 'red'}}>*</Text>
+                {/* Farm Name Input */}
+                {locationDetails && !isGettingLocation && !isManualSubmitting && (
+                  <View style={styles.farmNameContainer}>
+                    <Text style={styles.farmNameLabel}>
+                      {t.enterFarmName} <Text style={{color: 'red'}}>*</Text>
                     </Text>
                     <TextInput
-                      style={{
-                        backgroundColor: "#F5F5F5",
-                        borderRadius: 10,
-                        padding: 15,
-                        fontSize: 16,
-                        color: "#333",
-                        borderWidth: 1,
-                        borderColor: farmName.trim() ? "#4CAF50" : "#E0E0E0"
-                      }}
-                      placeholder={msg.enterNameForLocation}
+                      style={[
+                        styles.farmNameInput,
+                        farmName.trim() && styles.farmNameInputValid
+                      ]}
+                      placeholder={t.enterNameForLocation}
                       placeholderTextColor="#999"
                       value={farmName}
                       onChangeText={setFarmName}
@@ -1036,36 +940,18 @@ const LocationScreen = ({ navigation }) => {
                   </View>
                 )}
 
-                {/* Map Display with "You are here" marker */}
-                {showMap && mapRegion && (
+                {/* Map Display */}
+                {(!isManualMode || (isManualMode && showMap)) && mapRegion &&  (
                   <View style={{ marginBottom: 20 }}>
-                    <Text style={{ 
-                      fontSize: 14, 
-                      color: "#1B5E20", 
-                      fontWeight: "600", 
-                      marginBottom: 8,
-                      marginLeft: 5 
-                    }}>
-                      {msg.locationOnMap}
+                    <Text style={styles.mapTitle}>
+                      {t.locationOnMap}
                     </Text>
-                    <View style={{
-                      height: 250,
-                      borderRadius: 20,
-                      overflow: "hidden",
-                      borderWidth: 2,
-                      borderColor: "#4CAF50",
-                      elevation: 5
-                    }}>
-                      {isGettingLocation ? (
-                        <View style={{
-                          flex: 1,
-                          backgroundColor: "#f5f5f5",
-                          justifyContent: "center",
-                          alignItems: "center"
-                        }}>
+                    <View style={styles.mapContainer}>
+                      {isGettingLocation || isManualSubmitting ? (
+                        <View style={styles.mapLoadingContainer}>
                           <ActivityIndicator size="large" color="#2E7D32" />
-                          <Text style={{ marginTop: 10, color: "#666" }}>
-                            {msg.mapLoading}
+                          <Text style={styles.mapLoadingText}>
+                            {t.mapLoading}
                           </Text>
                         </View>
                       ) : (
@@ -1078,56 +964,20 @@ const LocationScreen = ({ navigation }) => {
                         >
                           <Marker coordinate={mapRegion}>
                             <View style={{ alignItems: 'center' }}>
-                              <View style={{
-                                backgroundColor: '#FF6B6B',
-                                width: 30,
-                                height: 30,
-                                borderRadius: 15,
-                                borderWidth: 3,
-                                borderColor: '#FFFFFF',
-                                elevation: 5,
-                                shadowColor: '#000',
-                                shadowOffset: { width: 0, height: 2 },
-                                shadowOpacity: 0.3,
-                                shadowRadius: 4,
-                              }} />
-                              <View style={{
-                                width: 4,
-                                height: 10,
-                                backgroundColor: '#FF6B6B',
-                                marginTop: -2,
-                              }} />
-                              <Text style={{
-                                fontSize: 12,
-                                fontWeight: 'bold',
-                                color: '#333',
-                                marginTop: 4,
-                                backgroundColor: 'rgba(255,255,255,0.8)',
-                                paddingHorizontal: 8,
-                                paddingVertical: 2,
-                                borderRadius: 10,
-                              }}>
-                                {msg.youAreHere}
+                              <View style={styles.markerDot} />
+                              <View style={styles.markerLine} />
+                              <Text style={styles.markerText}>
+                                {t.youAreHere}
                               </Text>
                             </View>
                           </Marker>
                         </MapView>
                       )}
                       
-                      <View style={{
-                        position: "absolute",
-                        top: 10,
-                        right: 10,
-                        backgroundColor: "rgba(255,255,255,0.9)",
-                        paddingHorizontal: 12,
-                        paddingVertical: 6,
-                        borderRadius: 15,
-                        flexDirection: "row",
-                        alignItems: "center",
-                      }}>
+                      <View style={styles.liveBadge}>
                         <Ionicons name="radio" size={12} color="#4CAF50" style={{ marginRight: 4 }} />
-                        <Text style={{ fontSize: 10, fontWeight: "bold", color: "#333" }}>
-                          {msg.live}
+                        <Text style={styles.liveText}>
+                          {t.live}
                         </Text>
                       </View>
                     </View>
@@ -1135,34 +985,20 @@ const LocationScreen = ({ navigation }) => {
                 )}
 
                 {/* Location Details */}
-                {displayLocation && !isGettingLocation && (
-                  <View style={{
-                    backgroundColor: "rgba(255,255,255,0.95)",
-                    borderRadius: 25,
-                    padding: 20,
-                    elevation: 8,
-                    borderWidth: 1,
-                    borderColor: "#4CAF50",
-                    marginBottom: 20
-                  }}>
-                    <Text style={{
-                      fontSize: 18,
-                      fontWeight: "bold",
-                      color: "#1B5E20",
-                      marginBottom: 15,
-                      textAlign: "center"
-                    }}>
-                      {msg.locationFound}
+                {displayLocation && !isGettingLocation && !isManualSubmitting && (
+                  <View style={styles.locationDetailsContainer}>
+                    <Text style={styles.locationDetailsTitle}>
+                      {t.locationFound}
                     </Text>
 
                     {displayLocation.place_name && (
-                      <View style={{ marginBottom: 12 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                      <View style={styles.detailItemContainer}>
+                        <View style={styles.detailLabelContainer}>
                           <Ionicons name="business" size={14} color="#666" style={{ marginRight: 6 }} />
-                          <Text style={{ fontSize: 12, color: "#888" }}>Place Name</Text>
+                          <Text style={styles.detailLabel}>{t.placeName}</Text>
                         </View>
-                        <View style={{ backgroundColor: "#F5F5F5", borderRadius: 8, padding: 10 }}>
-                          <Text style={{ fontSize: 16, fontWeight: "600", color: "#333" }}>
+                        <View style={styles.detailValueContainer}>
+                          <Text style={styles.detailValue}>
                             {displayLocation.place_name}
                           </Text>
                         </View>
@@ -1170,107 +1006,101 @@ const LocationScreen = ({ navigation }) => {
                     )}
 
                     {displayLocation.formatted_address && (
-                      <View style={{ marginBottom: 12 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                      <View style={styles.detailItemContainer}>
+                        <View style={styles.detailLabelContainer}>
                           <Ionicons name="location" size={14} color="#666" style={{ marginRight: 6 }} />
-                          <Text style={{ fontSize: 12, color: "#888" }}>{msg.fullAddress}</Text>
+                          <Text style={styles.detailLabel}>{t.fullAddress}</Text>
                         </View>
-                        <View style={{ backgroundColor: "#F5F5F5", borderRadius: 8, padding: 10 }}>
-                          <Text style={{ fontSize: 14, color: "#333" }}>
+                        <View style={styles.detailValueContainer}>
+                          <Text style={styles.detailValue}>
                             {displayLocation.formatted_address}
                           </Text>
                         </View>
                       </View>
                     )}
 
-                    <View style={{ flexDirection: "row", marginBottom: 12 }}>
+                    <View style={styles.detailRow}>
                       {displayLocation.city && (
-                        <View style={{ flex: 1, marginRight: 5 }}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                        <View style={styles.detailHalfContainer}>
+                          <View style={styles.detailLabelContainer}>
                             <Ionicons name="business" size={12} color="#666" style={{ marginRight: 4 }} />
-                            <Text style={{ fontSize: 10, color: "#888" }}>{msg.city}</Text>
+                            <Text style={styles.detailLabelSmall}>{t.city}</Text>
                           </View>
-                          <View style={{ backgroundColor: "#F5F5F5", borderRadius: 8, padding: 10 }}>
-                            <Text style={{ fontSize: 14, color: "#333" }}>{displayLocation.city}</Text>
+                          <View style={styles.detailValueContainerSmall}>
+                            <Text style={styles.detailValueSmall}>{displayLocation.city}</Text>
                           </View>
                         </View>
                       )}
                       {displayLocation.district && (
-                        <View style={{ flex: 1, marginLeft: 5 }}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                        <View style={styles.detailHalfContainer}>
+                          <View style={styles.detailLabelContainer}>
                             <Ionicons name="map" size={12} color="#666" style={{ marginRight: 4 }} />
-                            <Text style={{ fontSize: 10, color: "#888" }}>{msg.district}</Text>
+                            <Text style={styles.detailLabelSmall}>{t.district}</Text>
                           </View>
-                          <View style={{ backgroundColor: "#F5F5F5", borderRadius: 8, padding: 10 }}>
-                            <Text style={{ fontSize: 14, color: "#333" }}>{displayLocation.district}</Text>
+                          <View style={styles.detailValueContainerSmall}>
+                            <Text style={styles.detailValueSmall}>{displayLocation.district}</Text>
                           </View>
                         </View>
                       )}
                     </View>
 
-                    <View style={{ flexDirection: "row", marginBottom: 12 }}>
+                    <View style={styles.detailRow}>
                       {displayLocation.state && (
-                        <View style={{ flex: 1, marginRight: 5 }}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                        <View style={styles.detailHalfContainer}>
+                          <View style={styles.detailLabelContainer}>
                             <Ionicons name="flag" size={12} color="#666" style={{ marginRight: 4 }} />
-                            <Text style={{ fontSize: 10, color: "#888" }}>{msg.state}</Text>
+                            <Text style={styles.detailLabelSmall}>{t.state}</Text>
                           </View>
-                          <View style={{ backgroundColor: "#F5F5F5", borderRadius: 8, padding: 10 }}>
-                            <Text style={{ fontSize: 14, color: "#333" }}>{displayLocation.state}</Text>
+                          <View style={styles.detailValueContainerSmall}>
+                            <Text style={styles.detailValueSmall}>{displayLocation.state}</Text>
                           </View>
                         </View>
                       )}
                       {displayLocation.postal_code && (
-                        <View style={{ flex: 1, marginLeft: 5 }}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                        <View style={styles.detailHalfContainer}>
+                          <View style={styles.detailLabelContainer}>
                             <Ionicons name="mail" size={12} color="#666" style={{ marginRight: 4 }} />
-                            <Text style={{ fontSize: 10, color: "#888" }}>{msg.pinCode}</Text>
+                            <Text style={styles.detailLabelSmall}>{t.pinCode}</Text>
                           </View>
-                          <View style={{ backgroundColor: "#F5F5F5", borderRadius: 8, padding: 10 }}>
-                            <Text style={{ fontSize: 14, color: "#333" }}>{displayLocation.postal_code}</Text>
+                          <View style={styles.detailValueContainerSmall}>
+                            <Text style={styles.detailValueSmall}>{displayLocation.postal_code}</Text>
                           </View>
                         </View>
                       )}
                     </View>
 
                     {displayLocation.country && (
-                      <View style={{ marginBottom: 12 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                      <View style={styles.detailItemContainer}>
+                        <View style={styles.detailLabelContainer}>
                           <Ionicons name="earth" size={14} color="#666" style={{ marginRight: 6 }} />
-                          <Text style={{ fontSize: 12, color: "#888" }}>{msg.country}</Text>
+                          <Text style={styles.detailLabel}>{t.country}</Text>
                         </View>
-                        <View style={{ backgroundColor: "#F5F5F5", borderRadius: 8, padding: 10 }}>
-                          <Text style={{ fontSize: 14, color: "#333" }}>{displayLocation.country}</Text>
+                        <View style={styles.detailValueContainer}>
+                          <Text style={styles.detailValue}>{displayLocation.country}</Text>
                         </View>
                       </View>
                     )}
 
                     {coordinates && (
-                      <View style={{ 
-                        flexDirection: "row", 
-                        marginTop: 10, 
-                        paddingTop: 10, 
-                        borderTopWidth: 1, 
-                        borderTopColor: "#E0E0E0" 
-                      }}>
-                        <View style={{ flex: 1, marginRight: 5 }}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                      <View style={styles.coordinateRow}>
+                        <View style={styles.coordinateContainer}>
+                          <View style={styles.detailLabelContainer}>
                             <Ionicons name="resize" size={10} color="#666" style={{ marginRight: 4 }} />
-                            <Text style={{ fontSize: 10, color: "#888" }}>{msg.latitude}</Text>
+                            <Text style={styles.detailLabelSmall}>{t.latitude}</Text>
                           </View>
-                          <View style={{ backgroundColor: "#E8F5E9", borderRadius: 6, padding: 8 }}>
-                            <Text style={{ fontSize: 12, color: "#2E7D32", fontWeight: "500" }}>
+                          <View style={styles.coordinateValueContainer}>
+                            <Text style={styles.coordinateValue}>
                               {formatCoordinate(coordinates.latitude)}
                             </Text>
                           </View>
                         </View>
-                        <View style={{ flex: 1, marginLeft: 5 }}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                        <View style={styles.coordinateContainer}>
+                          <View style={styles.detailLabelContainer}>
                             <Ionicons name="resize" size={10} color="#666" style={{ marginRight: 4 }} />
-                            <Text style={{ fontSize: 10, color: "#888" }}>{msg.longitude}</Text>
+                            <Text style={styles.detailLabelSmall}>{t.longitude}</Text>
                           </View>
-                          <View style={{ backgroundColor: "#E8F5E9", borderRadius: 6, padding: 8 }}>
-                            <Text style={{ fontSize: 12, color: "#2E7D32", fontWeight: "500" }}>
+                          <View style={styles.coordinateValueContainer}>
+                            <Text style={styles.coordinateValue}>
                               {formatCoordinate(coordinates.longitude)}
                             </Text>
                           </View>
@@ -1279,13 +1109,13 @@ const LocationScreen = ({ navigation }) => {
                     )}
 
                     {coordinates?.accuracy && (
-                      <View style={{ marginTop: 8 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                      <View style={styles.accuracyContainer}>
+                        <View style={styles.detailLabelContainer}>
                           <Ionicons name="speedometer" size={12} color="#666" style={{ marginRight: 4 }} />
-                          <Text style={{ fontSize: 10, color: "#888" }}>{msg.accuracy}</Text>
+                          <Text style={styles.detailLabelSmall}>{t.accuracy}</Text>
                         </View>
-                        <View style={{ backgroundColor: "#E3F2FD", borderRadius: 6, padding: 8 }}>
-                          <Text style={{ fontSize: 12, color: "#1976D2", fontWeight: "500" }}>
+                        <View style={styles.accuracyValueContainer}>
+                          <Text style={styles.accuracyValue}>
                             {formatAccuracy(coordinates.accuracy)}
                           </Text>
                         </View>
@@ -1295,47 +1125,33 @@ const LocationScreen = ({ navigation }) => {
                     {/* "Detect Again" option */}
                     <TouchableOpacity
                       onPress={isManualMode ? handleManualSubmit : () => getLocation(true)}
-                      style={{
-                        padding: 12,
-                        alignItems: "center",
-                        marginTop: 5,
-                        flexDirection: 'row',
-                        justifyContent: 'center',
-                      }}
+                      style={styles.detectAgainButton}
                     >
                       <Ionicons name="refresh" size={18} color="#2E7D32" style={{ marginRight: 6 }} />
-                      <Text style={{ color: "#2E7D32", fontWeight: "600" }}>
-                        {msg.detectAgain}
+                      <Text style={styles.detectAgainText}>
+                        {t.detectAgain}
                       </Text>
                     </TouchableOpacity>
                   </View>
                 )}
 
-                {/* CONFIRM LOCATION BUTTON - Only one button */}
-                {locationDetails && (
+                {/* CONFIRM LOCATION BUTTON - ONLY ONE SAVE BUTTON */}
+                {locationDetails && !isGettingLocation && !isManualSubmitting && (
                   <TouchableOpacity
                     onPress={saveAndActivateLocation}
                     disabled={!isConfirmEnabled()}
-                    style={{
-                      borderRadius: 15,
-                      overflow: "hidden",
-                      marginTop: 10,
-                      marginBottom: 20,
-                      opacity: isConfirmEnabled() ? 1 : 0.5
-                    }}
+                    style={[
+                      styles.confirmButton,
+                      !isConfirmEnabled() && styles.confirmButtonDisabled
+                    ]}
                   >
                     <LinearGradient
                       colors={isConfirmEnabled() ? ["#2E7D32", "#1B5E20"] : ["#999", "#666"]}
-                      style={{ 
-                        paddingVertical: 18, 
-                        alignItems: "center", 
-                        flexDirection: 'row', 
-                        justifyContent: 'center' 
-                      }}
+                      style={styles.confirmButtonGradient}
                     >
                       <Ionicons name="checkmark-circle" size={24} color="#fff" style={{ marginRight: 8 }} />
-                      <Text style={{ color: "#fff", fontWeight: "bold", fontSize: 18 }}>
-                        {msg.confirmLocation}
+                      <Text style={styles.confirmButtonText}>
+                        {t.confirmLocation}
                       </Text>
                     </LinearGradient>
                   </TouchableOpacity>
@@ -1356,7 +1172,7 @@ const LocationScreen = ({ navigation }) => {
         <View style={styles.modalOverlay}>
           <View style={styles.menuContainer}>
             <View style={styles.menuHeader}>
-              <Text style={styles.menuTitle}>{msg.otherAddresses}</Text>
+              <Text style={styles.menuTitle}>{t.otherAddresses}</Text>
               <TouchableOpacity onPress={() => setShowLocationMenu(false)}>
                 <Ionicons name="close" size={24} color="#333" />
               </TouchableOpacity>
@@ -1373,15 +1189,17 @@ const LocationScreen = ({ navigation }) => {
             ) : (
               <View style={styles.emptyMenu}>
                 <Ionicons name="location-outline" size={50} color="#ccc" />
-                <Text style={styles.emptyMenuText}>No saved locations yet</Text>
+                <Text style={styles.emptyMenuText}>{t.noFarmsYet}</Text>
                 <TouchableOpacity
                   style={styles.addFirstLocationBtn}
                   onPress={() => {
                     setShowLocationMenu(false);
-                    getLocation(true);
+                    if (!isManualMode && autoModeActive) {
+                      getLocation(true);
+                    }
                   }}
                 >
-                  <Text style={styles.addFirstLocationText}>Add your first location</Text>
+                  <Text style={styles.addFirstLocationText}>{t.addNewFarm}</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -1390,11 +1208,13 @@ const LocationScreen = ({ navigation }) => {
               style={styles.menuAddButton}
               onPress={() => {
                 setShowLocationMenu(false);
-                getLocation(true);
+                if (!isManualMode && autoModeActive) {
+                  getLocation(true);
+                }
               }}
             >
               <Ionicons name="add-circle" size={24} color="#2E7D32" />
-              <Text style={styles.menuAddText}>{msg.addNewLocation}</Text>
+              <Text style={styles.menuAddText}>{t.addNewLocation}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1487,7 +1307,7 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     opacity: 0.7,
   },
-  // Hamburger container - separate
+  // Hamburger container
   hamburgerContainer: {
     position: 'absolute',
     top: 50,
@@ -1504,7 +1324,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
   },
-  // Location icon container - separate
+  // Location icon container
   locationIconContainer: {
     alignItems: 'center',
     marginTop: 25,
@@ -1521,6 +1341,415 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#1B5E20',
     textAlign: 'center',
+    paddingHorizontal: 20,
+  },
+  // Skip button
+  skipButton: {
+    backgroundColor: "#9C27B0",
+    padding: 15,
+    borderRadius: 12,
+    alignItems: "center",
+    elevation: 5,
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  skipButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 16,
+    flexShrink: 1,
+  },
+  // Loading indicator
+  loadingIndicator: {
+    backgroundColor: "#E3F2FD",
+    padding: 15,
+    borderRadius: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  loadingIndicatorText: {
+    marginLeft: 10,
+    color: "#1976D2",
+    fontWeight: "600",
+    fontSize: 14,
+    flexShrink: 1,
+  },
+  // Error container
+  errorContainer: {
+    backgroundColor: "#FFEBEE",
+    padding: 20,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#FF5252",
+    alignItems: "center"
+  },
+  errorText: {
+    color: "#D32F2F",
+    textAlign: "center",
+    fontSize: 16,
+    marginTop: 10,
+    marginBottom: 15,
+  },
+  retryButton: {
+    backgroundColor: "#2196F3",
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  retryButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 16,
+  },
+  // Permission denied container
+  permissionDeniedContainer: {
+    backgroundColor: "#FFEBEE",
+    padding: 20,
+    borderRadius: 10,
+    alignItems: "center"
+  },
+  permissionDeniedText: {
+    color: "#D32F2F",
+    textAlign: "center",
+    marginTop: 10,
+    fontSize: 16,
+    marginBottom: 15,
+  },
+  // Mode toggle - INCREASED SIZE FOR HINDI
+  modeToggleContainer: {
+    flexDirection: "row",
+    backgroundColor: "#fff",
+    borderRadius: 15,
+    padding: 8,
+    elevation: 3,
+    minHeight: 70,
+  },
+  modeToggleButton: {
+    flex: 1,
+    paddingVertical: 15,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'center',
+    minHeight: 60,
+  },
+  modeToggleButtonActive: {
+    backgroundColor: "#2E7D32",
+  },
+  modeToggleText: {
+    fontWeight: "bold",
+    color: "#666",
+    fontSize: 15,
+    textAlign: 'center',
+    flexShrink: 1,
+    maxWidth: '70%',
+  },
+  modeToggleTextActive: {
+    color: "#fff",
+  },
+  // Manual mode container - FIXED
+  manualModeContainer: {
+    backgroundColor: "rgba(255,255,255,0.95)",
+    borderRadius: 25,
+    padding: 25,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: "#4CAF50",
+    marginBottom: 20
+  },
+  manualModeTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#1B5E20",
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  manualModeInput: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 10,
+    padding: 15,
+    fontSize: 16,
+    color: "#333",
+    minHeight: 120,
+    maxHeight: 200,
+    textAlignVertical: "top",
+    borderWidth: 2,
+    borderColor: "#4CAF50",
+    marginBottom: 5,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  findOnMapButton: {
+    backgroundColor: "#FF9800",
+    padding: 15,
+    borderRadius: 12,
+    alignItems: "center",
+    marginTop: 20,
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  findOnMapButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 16,
+  },
+  // Get location button
+  getLocationButton: {
+    backgroundColor: "#2196F3",
+    padding: 15,
+    borderRadius: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 20,
+  },
+  getLocationButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 16,
+    marginLeft: 10,
+  },
+  disabledButton: {
+    opacity: 0.5,
+  },
+  // Farm name container
+  farmNameContainer: {
+    backgroundColor: "rgba(255,255,255,0.95)",
+    borderRadius: 25,
+    padding: 20,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: "#4CAF50",
+    marginBottom: 20
+  },
+  farmNameLabel: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#1B5E20",
+    marginBottom: 10,
+  },
+  farmNameInput: {
+    backgroundColor: "#F5F5F5",
+    borderRadius: 10,
+    padding: 15,
+    fontSize: 16,
+    color: "#333",
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+  },
+  farmNameInputValid: {
+    borderColor: "#4CAF50",
+  },
+  // Map styles
+  mapTitle: {
+    fontSize: 14,
+    color: "#1B5E20",
+    fontWeight: "600",
+    marginBottom: 8,
+    marginLeft: 5,
+  },
+  mapContainer: {
+    height: 280,
+    borderRadius: 20,
+    overflow: "hidden",
+    borderWidth: 2,
+    borderColor: "#4CAF50",
+    elevation: 5
+  },
+  mapLoadingContainer: {
+    flex: 1,
+    backgroundColor: "#f5f5f5",
+    justifyContent: "center",
+    alignItems: "center"
+  },
+  mapLoadingText: {
+    marginTop: 10,
+    color: "#666",
+    fontSize: 14,
+  },
+  markerDot: {
+    backgroundColor: '#FF6B6B',
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  markerLine: {
+    width: 4,
+    height: 10,
+    backgroundColor: '#FF6B6B',
+    marginTop: -2,
+  },
+  markerText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 4,
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  liveBadge: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    backgroundColor: "rgba(255,255,255,0.9)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 15,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  liveText: {
+    fontSize: 10,
+    fontWeight: "bold",
+    color: "#333",
+  },
+  // Location details container
+  locationDetailsContainer: {
+    backgroundColor: "rgba(255,255,255,0.95)",
+    borderRadius: 25,
+    padding: 20,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: "#4CAF50",
+    marginBottom: 20
+  },
+  locationDetailsTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#1B5E20",
+    marginBottom: 15,
+    textAlign: "center",
+  },
+  detailItemContainer: {
+    marginBottom: 15,
+  },
+  detailLabelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  detailLabel: {
+    fontSize: 14,
+    color: "#666",
+    fontWeight: '500',
+  },
+  detailLabelSmall: {
+    fontSize: 12,
+    color: "#666",
+    fontWeight: '500',
+  },
+  detailValueContainer: {
+    backgroundColor: "#F5F5F5",
+    borderRadius: 8,
+    padding: 12,
+  },
+  detailValue: {
+    fontSize: 15,
+    color: "#333",
+  },
+  detailRow: {
+    flexDirection: "row",
+    marginBottom: 15,
+  },
+  detailHalfContainer: {
+    flex: 1,
+    marginRight: 5,
+  },
+  detailValueContainerSmall: {
+    backgroundColor: "#F5F5F5",
+    borderRadius: 8,
+    padding: 10,
+  },
+  detailValueSmall: {
+    fontSize: 14,
+    color: "#333",
+  },
+  coordinateRow: {
+    flexDirection: "row",
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: "#E0E0E0",
+    marginBottom: 10,
+  },
+  coordinateContainer: {
+    flex: 1,
+    marginRight: 5,
+  },
+  coordinateValueContainer: {
+    backgroundColor: "#E8F5E9",
+    borderRadius: 6,
+    padding: 10,
+  },
+  coordinateValue: {
+    fontSize: 13,
+    color: "#2E7D32",
+    fontWeight: "500",
+  },
+  accuracyContainer: {
+    marginTop: 8,
+    marginBottom: 10,
+  },
+  accuracyValueContainer: {
+    backgroundColor: "#E3F2FD",
+    borderRadius: 6,
+    padding: 10,
+  },
+  accuracyValue: {
+    fontSize: 13,
+    color: "#1976D2",
+    fontWeight: "500",
+  },
+  detectAgainButton: {
+    padding: 12,
+    alignItems: "center",
+    marginTop: 5,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+  },
+  detectAgainText: {
+    color: "#2E7D32",
+    fontWeight: "600",
+    fontSize: 15,
+  },
+  // Confirm button
+  confirmButton: {
+    borderRadius: 15,
+    overflow: "hidden",
+    marginTop: 10,
+    marginBottom: 20,
+  },
+  confirmButtonDisabled: {
+    opacity: 0.5,
+  },
+  confirmButtonGradient: {
+    paddingVertical: 18,
+    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  confirmButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 18,
   },
   // Modal styles
   modalOverlay: {
@@ -1621,63 +1850,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#2E7D32',
     marginLeft: 8,
-  },
-  // Save location styles
-  saveLocationContainer: {
-    marginTop: 20,
-    paddingTop: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
-  },
-  saveLocationTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 12,
-  },
-  locationNameInput: {
-    backgroundColor: '#f5f5f5',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 14,
-    color: '#333',
-    marginBottom: 12,
-  },
-  saveActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  cancelSaveBtn: {
-    flex: 1,
-    padding: 12,
-    borderRadius: 8,
-    backgroundColor: '#f5f5f5',
-    alignItems: 'center',
-    marginRight: 8,
-  },
-  cancelSaveText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#666',
-  },
-  confirmSaveBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 12,
-    borderRadius: 8,
-    backgroundColor: '#2E7D32',
-    marginLeft: 8,
-  },
-  confirmSaveText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#fff',
-    marginLeft: 4,
-  },
-  disabledBtn: {
-    opacity: 0.5,
   },
 });
 

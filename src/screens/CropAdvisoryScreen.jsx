@@ -19,7 +19,7 @@ const { width, height } = Dimensions.get('window');
 const CropAdvisoryScreen = () => {
     const { t, lang, setChatType, setChatVisible, setPinnedMessage, setChatBackground, isChatVisible } = useContext(AppContext);
     const [step, setStep] = useState(0);
-    const [form, setForm] = useState({ name: '', date: '', fertilizer: '', pest: '', soil: '' });
+    const [form, setForm] = useState({ name: '', date: '', fertilizer: '', pest: '' });
     const [chatOpened, setChatOpened] = useState(false);
     const [showManualButton, setShowManualButton] = useState(false);
     
@@ -93,10 +93,9 @@ const CropAdvisoryScreen = () => {
         else if (step === 2) speak(t.advQ2);
         else if (step === 3) speak(t.advQ3);
         else if (step === 4) speak(t.advQ4);
-        else if (step === 5) speak(t.advQ5);
-        else if (step === 6) {
+        else if (step === 5) {
             speak(t.advSummary);
-            // Automatically open chatbot when reaching step 6
+            // Automatically open chatbot when reaching step 5
             if (!chatOpened) {
                 setTimeout(() => {
                     openChatbotWithDetails();
@@ -116,7 +115,7 @@ const CropAdvisoryScreen = () => {
 
     // Monitor chat visibility to show/hide manual button
     useEffect(() => {
-        if (step === 6) {
+        if (step === 5) {
             if (!isChatVisible && chatOpened) {
                 setShowManualButton(true);
             } else {
@@ -130,8 +129,7 @@ const CropAdvisoryScreen = () => {
             ` 🌾 Crop: ${form.name || 'Not specified'}\n` +
             `📅 Sowing: ${form.date || 'Not specified'}\n` +
             `🧪 Fertilizer: ${form.fertilizer || 'Not specified'}\n` +
-            `🐛 Issues: ${form.pest || 'Not specified'}\n` +
-            `🌱 Soil: ${form.soil || 'Not specified'}`;
+            `🐛 Issues: ${form.pest || 'Not specified'}`;
         
         setPinnedMessage(summary);
         setChatType('Advisory');
@@ -289,16 +287,12 @@ const CropAdvisoryScreen = () => {
                                     <Text style={styles.detailLabel}>🐛 Issues:</Text>
                                     <Text style={styles.detailValue}>{form.pest || 'Not specified'}</Text>
                                 </View>
-                                
-                                
                             </View>
                             
-                            {!chatOpened ? (
-                                <>
-                                    <Text style={styles.loadingText}>Opening chatbot with your crop details...</Text>
-                                    <ActivityIndicator size="large" color="#2E7D32" style={styles.loader} />
-                                </>
-                            ) : showManualButton ? (
+                            <Text style={styles.loadingText}>Opening chatbot with your crop details...</Text>
+                            <ActivityIndicator size="large" color="#2E7D32" style={styles.loader} />
+                            
+                            {showManualButton && (
                                 <TouchableOpacity 
                                     style={styles.openChatButton}
                                     onPress={openChatbotWithDetails}
@@ -307,7 +301,7 @@ const CropAdvisoryScreen = () => {
                                     <Ionicons name="chatbubbles" size={24} color="#fff" />
                                     <Text style={styles.openChatButtonText}>Open Chatbot</Text>
                                 </TouchableOpacity>
-                            ) : null}
+                            )}
                         </View>
                     </View>
                 );
@@ -328,7 +322,7 @@ const CropAdvisoryScreen = () => {
             ]}>
                 {renderStep()}
                 
-                {/* Speaker Button - Fixed at Bottom Left (NO BACK BUTTON ADDED) */}
+                {/* Speaker Button - Fixed at Bottom Left */}
                 <View style={styles.speakerFixedContainer}>
                     <TouchableOpacity 
                         style={[
@@ -355,8 +349,8 @@ const CropAdvisoryScreen = () => {
                     )}
                 </View>
                 
-                {/* Keep your existing back button - untouched */}
-                {step > 0 && step < 6 && (
+                {/* Back button */}
+                {step > 0 && step < 5 && (
                     <TouchableOpacity 
                         style={{
                             position: 'absolute',
@@ -398,7 +392,7 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         padding: 20,
-        paddingBottom: 100, // Add padding to avoid bottom elements
+        paddingBottom: 100,
     },
     iconContainer: {
         marginBottom: 20,
@@ -535,7 +529,6 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         marginLeft: 10,
     },
-    // Speaker button - Fixed at bottom left
     speakerFixedContainer: {
         position: 'absolute',
         bottom: 20,
@@ -559,10 +552,10 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
     },
     activeButton: {
-        backgroundColor: '#2E7D32', // Green when active
+        backgroundColor: '#2E7D32',
     },
     mutedButton: {
-        backgroundColor: '#D32F2F', // Red when muted
+        backgroundColor: '#D32F2F',
     },
     waveContainer: {
         flexDirection: 'row',
