@@ -50,7 +50,7 @@ const translations = {
     sowingDate: "Sowing Date",
     fertilizer: "Fertilizer Used",
     pestIssue: "Pest Issue",
-
+    error: "Error",
     statusAvailable: "Available",
     statusFull: "Full",
     statusFilling: "Filling Fast",
@@ -148,7 +148,14 @@ const translations = {
     storagesNearYou: "Cold Storages Near You",
     availableCount: "available with plenty of space",
     manualAddressPlaceholder: "Enter your address ",
-
+    aiWelcome:
+      "👋 Hi! I'm your AI Farming Assistant. How can I help you today?",
+    askQuestion: "Ask your question",
+    typing: "AI is thinking...",
+    typeQuestion: "Type your question...",
+    loadingConversation: "Loading conversation...",
+    unableConnect: "Unable to connect",
+    checkInternet: "Please check your internet connection and try again.",
     // Storage Screen additional keys
     back: "Back",
     selectCrops: "Select Crops",
@@ -339,7 +346,7 @@ const translations = {
     change: "बदलें",
     manageAllFarms: "सभी खेत प्रबंधित करें",
     farms: "खेत",
-
+    error: "त्रुटि",
     // SavedLocationsScreen
     yourFarms: "आपके खेत",
     selectFarm: "जारी रखने के लिए एक खेत चुनें",
@@ -384,6 +391,14 @@ const translations = {
     storagesNearYou: "आपके पास कोल्ड स्टोरेज",
     availableCount: "पर्याप्त जगह वाली उपलब्ध",
     quantityPlaceholder: "उदा., 500",
+    aiWelcome:
+      "👋 नमस्ते! मैं आपका AI खेती सहायक हूँ। आज मैं आपकी कैसे मदद कर सकता हूँ?",
+    askQuestion: "अपना प्रश्न पूछें",
+    typing: "AI सोच रहा है...",
+    typeQuestion: "अपना प्रश्न लिखें...",
+    loadingConversation: "बातचीत लोड हो रही है...",
+    unableConnect: "कनेक्ट नहीं हो पा रहा",
+    checkInternet: "कृपया अपना इंटरनेट कनेक्शन जांचें और फिर से प्रयास करें।",
     // Storage Screen additional keys
     selectCrops: "फसल चुनें",
     selectCropsMsg: "कृपया कम से कम एक फसल चुनें",
@@ -489,7 +504,7 @@ const translations = {
     sowingDate: "বপনের তারিখ",
     fertilizer: "ব্যবহৃত সার",
     pestIssue: "পোকার সমস্যা",
-
+    error: "ত্রুটি",
     statusAvailable: "উপলব্ধ",
     statusFull: "ভর্তি",
     statusFilling: "দ্রুত ভর্তি হচ্ছে",
@@ -559,6 +574,15 @@ const translations = {
     manageFarms: "খামার পরিচালনা করুন",
     farms: "খামার",
     back: "ফিরে যান",
+    aiWelcome:
+      "👋 নমস্কার! আমি আপনার AI কৃষি সহকারী। আজ আমি আপনাকে কীভাবে সাহায্য করতে পারি?",
+    askQuestion: "আপনার প্রশ্ন করুন",
+    typing: "AI চিন্তা করছে...",
+    typeQuestion: "আপনার প্রশ্ন লিখুন...",
+    loadingConversation: "কথোপকথন লোড হচ্ছে...",
+    unableConnect: "সংযোগ করা যাচ্ছে না",
+    checkInternet:
+      "দয়া করে আপনার ইন্টারনেট সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।",
     // SavedLocationsScreen
     yourFarms: "আপনার খামারগুলি",
     selectFarm: "চালিয়ে যেতে একটি খামার নির্বাচন করুন",

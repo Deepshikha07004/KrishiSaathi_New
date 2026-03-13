@@ -39,7 +39,7 @@ const SignupScreen = ({ navigation }) => {
     Keyboard.dismiss();
     if (!fullName.trim()) return Alert.alert("Error", t.fullName);
     const err = validatePhone(phoneNumber);
-    if (err) return Alert.alert("Error", err);
+    if (err) return Alert.alert(t.error ||"Error", err);
 
     setIsLoading(true);
     
@@ -222,9 +222,8 @@ const SignupScreen = ({ navigation }) => {
                       placeholder={t.fullName}
                       placeholderTextColor="#888"
                       value={fullName}
-                      onChangeText={(v) =>
-                        setFullName(v.replace(/[^a-zA-Z\s]/g, ""))
-                      }
+                      onChangeText={setFullName}
+                      
                       style={{ flex: 1, paddingVertical: 16, fontSize: 16, color: "#333" }}
                     />
                   </LinearGradient>
