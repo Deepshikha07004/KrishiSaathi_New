@@ -49,14 +49,19 @@ export const AppProvider = ({ children }) => {
                     return;
                 }
 
-                let { status } = await Location.requestForegroundPermissionsAsync();
-                if (status !== 'granted') {
-                    console.log("Location permission denied");
-                    return;
+                let { status } = await Location.getForegroundPermissionsAsync();
+               if (status !== "granted") {
+  const permission = await Location.requestForegroundPermissionsAsync();
+  status = permission.status;
+
+  if (status !== "granted") {
+    console.log("Location permission denied");
+    return;
+  }
                 }
 
                 // Get initial location
-                const initialLocation = await Location.getCurrentPositionAsync({});
+                const initialLocation = await Location.getCurrentPositionAsync({accuracy: Location.Accuracy.High,});
                 updateAddress(initialLocation.coords.latitude, initialLocation.coords.longitude);
 
                 // Watch for location changes
