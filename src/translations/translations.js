@@ -225,6 +225,10 @@ const translations = {
     permissionDenied: "Location permission denied. Please enable in settings.",
     connectionError:
       "Unable to load storage facilities. Please check your connection.",
+    unableToLoad: "Unable to Load",
+    weatherError: "Failed to load weather data",
+    retry: "Retry",
+    error: "Error",
   },
 
   hi: {
@@ -451,6 +455,10 @@ const translations = {
     loading: "लोड हो रहा है...",
     retry: "पुनः प्रयास करें",
     noData: "कोई डेटा उपलब्ध नहीं",
+    unableToLoad: "लोड नहीं हो सका",
+    weatherError: "मौसम डेटा लोड करने में विफल",
+    retry: "पुनः प्रयास करें",
+    error: "त्रुटि",
   },
 
   bn: {
@@ -680,6 +688,10 @@ const translations = {
     loading: "লোড হচ্ছে...",
     retry: "পুনরায় চেষ্টা করুন",
     noData: "কোন তথ্য উপলব্ধ নেই",
+    unableToLoad: "লোড করা যায়নি",
+    weatherError: "আবহাওয়ার তথ্য লোড করা যায়নি",
+    retry: "পুনরায় চেষ্টা করুন",
+    error: "ত্রুটি",
   },
 };
 

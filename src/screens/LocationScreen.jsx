@@ -309,25 +309,7 @@ const LocationScreen = ({ navigation }) => {
     }
   };
 
-  // 👇 ADDED: Temporary skip function for testing
-  const skipToHome = () => {
-    Alert.alert(
-      "Skip to Home",
-      "This will bypass location detection and go to Home screen.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Skip",
-          onPress: () => {
-            // IMMEDIATELY stop speech before navigation
-            Speech.stop();
-            setIsSpeakerSpeaking(false);
-            navigation.replace("Home");
-          }
-        }
-      ]
-    );
-  };
+
 
   // ============ MAIN LOCATION FLOW ============
 
@@ -683,18 +665,7 @@ const LocationScreen = ({ navigation }) => {
               </Text>
             </View>
 
-            {/* Temporary Skip Button */}
-            <View style={{ paddingHorizontal: 20, marginBottom: 15 }}>
-              <TouchableOpacity
-                onPress={skipToHome}
-                style={styles.skipButton}
-              >
-                <Ionicons name="arrow-forward-circle" size={24} color="#fff" style={{ marginRight: 8 }} />
-                <Text style={styles.skipButtonText}>
-                  {t.skip}
-                </Text>
-              </TouchableOpacity>
-            </View>
+
 
             {/* Loading/Status Indicator */}
             {isGettingLocation && !isManualMode && (
@@ -1343,22 +1314,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: 20,
   },
-  // Skip button
-  skipButton: {
-    backgroundColor: "#9C27B0",
-    padding: 15,
-    borderRadius: 12,
-    alignItems: "center",
-    elevation: 5,
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
-  skipButtonText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 16,
-    flexShrink: 1,
-  },
+
   // Loading indicator
   loadingIndicator: {
     backgroundColor: "#E3F2FD",

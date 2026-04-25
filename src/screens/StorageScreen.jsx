@@ -22,7 +22,7 @@ const { width, height } = Dimensions.get('window');
 
 const StorageScreen = ({ navigation }) => {
     const { t, lang, location, userLocation, sownCrops, setSownCrops, setChatType, setChatVisible, setPinnedMessage, setChatBackground } = useContext(AppContext);
-    
+
     // Flow state
     const [step, setStep] = useState(1); // 1: crops, 2: quantity, 3: list, 4: details
     const [selectedCrops, setSelectedCrops] = useState([]);
@@ -30,7 +30,7 @@ const StorageScreen = ({ navigation }) => {
     const [unit, setUnit] = useState('kg');
     const [selectedStorage, setSelectedStorage] = useState(null);
     const [showUnitPicker, setShowUnitPicker] = useState(false);
-    
+
     // Storage list state
     const [storages, setStorages] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -39,14 +39,14 @@ const StorageScreen = ({ navigation }) => {
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
-    
+
     // Speaker state
     const [isMuted, setIsMuted] = useState(false);
     const [isSpeaking, setIsSpeaking] = useState(false);
 
     // API Base URL - Replace with your actual backend URL
     const API_BASE_URL = 'https://your-backend-api.com/api';
-    
+
     // Units
     const units = ['kg', 'quintal', 'ton'];
 
@@ -63,9 +63,9 @@ const StorageScreen = ({ navigation }) => {
                     description: storage.status.description || ''
                 };
             }
-            
+
             // If status is a code that needs mapping
-            switch(storage.status.code || storage.status) {
+            switch (storage.status.code || storage.status) {
                 case 'almost_full':
                     return {
                         text: t.almostFull || 'Almost Full',
@@ -92,7 +92,7 @@ const StorageScreen = ({ navigation }) => {
                     break;
             }
         }
-        
+
         // Fallback calculation based on availablePercentage from backend
         const availablePercentage = storage.availablePercentage || 0;
         if (availablePercentage <= 15) {
@@ -122,14 +122,14 @@ const StorageScreen = ({ navigation }) => {
     // Function to translate digits to local script
     const translateDigits = (text) => {
         if (!text && text !== 0) return '';
-        
+
         const str = text.toString();
         let translated = '';
-        
+
         for (let i = 0; i < str.length; i++) {
             const char = str[i];
             if (char >= '0' && char <= '9') {
-                switch(char) {
+                switch (char) {
                     case '0': translated += t.digit0 || '0'; break;
                     case '1': translated += t.digit1 || '1'; break;
                     case '2': translated += t.digit2 || '2'; break;
@@ -172,7 +172,7 @@ const StorageScreen = ({ navigation }) => {
 
     // Get background image based on step
     const getBackgroundImage = () => {
-        switch(step) {
+        switch (step) {
             case 1:
                 return require('../assets/storagebg.jpg');
             case 2:
@@ -207,25 +207,25 @@ const StorageScreen = ({ navigation }) => {
     // Auto-speak when step changes
     useEffect(() => {
         if (isMuted) return;
-        
+
         Speech.stop();
         setIsSpeaking(false);
-        
+
         const timer = setTimeout(() => {
             if (step === 1) {
                 const msg = lang === 'hi' ? "आपने कौन सी फसलें काटी हैं? एक या अधिक फसलें चुनें" :
-                           lang === 'bn' ? "আপনি কোন ফসল কাটিয়েছেন? এক বা একাধিক ফসল নির্বাচন করুন" :
-                           "Which crops have you harvested? Select one or more crops";
+                    lang === 'bn' ? "আপনি কোন ফসল কাটিয়েছেন? এক বা একাধিক ফসল নির্বাচন করুন" :
+                        "Which crops have you harvested? Select one or more crops";
                 speak(msg);
             } else if (step === 2) {
                 const msg = lang === 'hi' ? "आपकी फसल की मात्रा क्या है?" :
-                           lang === 'bn' ? "আপনার ফসলের পরিমাণ কত?" :
-                           "What is the quantity of your harvest?";
+                    lang === 'bn' ? "আপনার ফসলের পরিমাণ কত?" :
+                        "What is the quantity of your harvest?";
                 speak(msg);
             } else if (step === 3 && storages.length > 0) {
                 const msg = lang === 'hi' ? `आपके पास ${translateDigits(storages.length)} कोल्ड स्टोरेज मिले` :
-                           lang === 'bn' ? `আপনার কাছে ${translateDigits(storages.length)} কোল্ড স্টোরেজ পাওয়া গেছে` :
-                           `Found ${translateDigits(storages.length)} cold storages near you`;
+                    lang === 'bn' ? `আপনার কাছে ${translateDigits(storages.length)} কোল্ড স্টোরেজ পাওয়া গেছে` :
+                        `Found ${translateDigits(storages.length)} cold storages near you`;
                 speak(msg);
             }
         }, 500);
@@ -235,12 +235,12 @@ const StorageScreen = ({ navigation }) => {
 
     const speak = (msg) => {
         if (isMuted || !msg) return;
-        
+
         console.log('Speaking:', msg);
-        
+
         Speech.stop();
-        
-        Speech.speak(msg, { 
+
+        Speech.speak(msg, {
             language: speechLangMap[lang] || "en-US",
             pitch: 1,
             rate: 0.9,
@@ -322,7 +322,7 @@ const StorageScreen = ({ navigation }) => {
 
         try {
             console.log('Fetching storages with availability for crops:', selectedCrops);
-            
+
             // Prepare request body
             const requestBody = {
                 crops: selectedCrops.map(c => c.id || c._id),
@@ -345,18 +345,18 @@ const StorageScreen = ({ navigation }) => {
             });
 
             const data = await response.json();
-            
+
             if (response.ok) {
                 const newStorages = data.storages || data.data || [];
-                
+
                 if (refresh) {
                     setStorages(newStorages);
                 } else {
                     setStorages(prev => [...prev, ...newStorages]);
                 }
-                
+
                 setHasMore(data.hasMore || data.pagination?.hasMore || false);
-                
+
                 // Speak results if there are storages
                 if (newStorages.length > 0 && !isMuted) {
                     // Count storages with plenty of space using the status function
@@ -364,10 +364,10 @@ const StorageScreen = ({ navigation }) => {
                         const status = getStorageStatus(s);
                         return status.text === (t.plentyOfSpace || 'Plenty of Space Available');
                     }).length;
-                    
+
                     let msg;
                     if (lang === 'hi') {
-                        msg = availableCount > 0 
+                        msg = availableCount > 0
                             ? `${translateDigits(newStorages.length)} स्टोरेज मिले. ${translateDigits(availableCount)} में पर्याप्त जगह उपलब्ध है.`
                             : `${translateDigits(newStorages.length)} कोल्ड स्टोरेज आपके पास मिले`;
                     } else if (lang === 'bn') {
@@ -379,16 +379,16 @@ const StorageScreen = ({ navigation }) => {
                             ? `Found ${translateDigits(newStorages.length)} storages. ${translateDigits(availableCount)} have plenty of space available.`
                             : `Found ${translateDigits(newStorages.length)} cold storages near you`;
                     }
-                    
+
                     setTimeout(() => speak(msg), 100);
                 }
             } else {
                 setError(data.message || 'Unable to load storage facilities');
             }
-                
+
         } catch (error) {
             console.error('Error fetching storages:', error);
-             setError(data.message || t.connectionError || 'Unable to load storage facilities. Please check your connection.');
+            setError(data.message || t.connectionError || 'Unable to load storage facilities. Please check your connection.');
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -398,7 +398,7 @@ const StorageScreen = ({ navigation }) => {
 
     const toggleCrop = (crop) => {
         if (!crop || !crop.id) return;
-        
+
         if (selectedCrops.some(c => c?.id === crop.id)) {
             setSelectedCrops(selectedCrops.filter(c => c?.id !== crop.id));
         } else {
@@ -451,10 +451,10 @@ const StorageScreen = ({ navigation }) => {
     const handleStorageSelect = (storage) => {
         setSelectedStorage(storage);
         setStep(4);
-        
+
         if (!isMuted) {
             const status = getStorageStatus(storage);
-            
+
             let msg;
             if (lang === 'hi') {
                 msg = `${storage.name}. दूरी ${translateDigits(storage.distance)} किलोमीटर. ${status.text}. ${translateDigits(extractNumber(storage.availableCapacity))} उपलब्ध है ${translateDigits(extractNumber(storage.totalCapacity))} में से.`;
@@ -463,7 +463,7 @@ const StorageScreen = ({ navigation }) => {
             } else {
                 msg = `${storage.name}. Distance ${translateDigits(storage.distance)} kilometers. ${status.text}. ${translateDigits(extractNumber(storage.availableCapacity))} available out of ${translateDigits(extractNumber(storage.totalCapacity))}.`;
             }
-            
+
             speak(msg);
         }
     };
@@ -498,23 +498,7 @@ const StorageScreen = ({ navigation }) => {
         fetchStorages(1, true);
     };
 
-    const handleSkip = () => {
-        if (step === 1) {
-            if (sownCrops && sownCrops.length > 0) {
-                setSelectedCrops([sownCrops[0]]);
-            }
-            setStep(2);
-        } else if (step === 2) {
-            setQuantity('500');
-            setStep(3);
-            fetchStorages(1, true);
-        } else if (step === 3) {
-            if (storages.length > 0) {
-                setSelectedStorage(storages[0]);
-            }
-            setStep(4);
-        }
-    };
+
 
     // Render step indicators
     const renderStepIndicator = () => (
@@ -530,7 +514,7 @@ const StorageScreen = ({ navigation }) => {
     // Step 1: Crop Selection
     const renderCropSelection = () => {
         const cropsToShow = sownCrops || [];
-        
+
         if (loading && !sownCrops) {
             return (
                 <View style={styles.centerContainer}>
@@ -539,7 +523,7 @@ const StorageScreen = ({ navigation }) => {
                 </View>
             );
         }
-        
+
         return (
             <View style={styles.centerContainer}>
                 <Ionicons name="leaf-outline" size={90} color="#2E7D32" />
@@ -549,7 +533,7 @@ const StorageScreen = ({ navigation }) => {
                 <Text style={[styles.subtitleText, { color: '#fff' }]}>
                     {t.cropSubtitle || "Select one or more crops"}
                 </Text>
-                
+
                 <ScrollView style={styles.cropsScrollContainer} showsVerticalScrollIndicator={false}>
                     <View style={styles.cropsGrid}>
                         {cropsToShow.map((crop) => (
@@ -578,7 +562,7 @@ const StorageScreen = ({ navigation }) => {
                     </View>
                 </ScrollView>
 
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={[
                         styles.primaryBtn,
                         selectedCrops.length === 0 && styles.disabledBtn
@@ -601,7 +585,7 @@ const StorageScreen = ({ navigation }) => {
             <Text style={styles.questionText}>
                 {t.quantityTitle || "What is the quantity of your harvest?"}
             </Text>
-            
+
             {selectedCrops.length > 0 && (
                 <View style={styles.selectedChipsContainer}>
                     {selectedCrops.map((crop) => (
@@ -622,20 +606,20 @@ const StorageScreen = ({ navigation }) => {
                         onChangeText={setQuantity}
                         keyboardType="numeric"
                     />
-                    
-                    <TouchableOpacity 
+
+                    <TouchableOpacity
                         style={styles.unitButton}
                         onPress={() => setShowUnitPicker(true)}
                     >
                         <Text style={styles.unitButtonText}>
-                            {unit === 'kg' ? (t.kg || 'kg') : 
-                             unit === 'quintal' ? (t.quintal || 'quintal') : 
-                             (t.ton || 'ton')}
+                            {unit === 'kg' ? (t.kg || 'kg') :
+                                unit === 'quintal' ? (t.quintal || 'quintal') :
+                                    (t.ton || 'ton')}
                         </Text>
                         <Ionicons name="chevron-down" size={18} color="#666" />
                     </TouchableOpacity>
                 </View>
-                
+
                 <Text style={styles.hintText}>
                     {t.quantityExample || "Example: 500 kg, 10 quintal, 2 ton"}
                 </Text>
@@ -665,9 +649,9 @@ const StorageScreen = ({ navigation }) => {
                                     styles.unitOptionText,
                                     unit === unitOption && styles.selectedUnitOptionText
                                 ]}>
-                                    {unitOption === 'kg' ? (t.kg || 'kg') : 
-                                     unitOption === 'quintal' ? (t.quintal || 'quintal') : 
-                                     (t.ton || 'ton')}
+                                    {unitOption === 'kg' ? (t.kg || 'kg') :
+                                        unitOption === 'quintal' ? (t.quintal || 'quintal') :
+                                            (t.ton || 'ton')}
                                 </Text>
                             </TouchableOpacity>
                         ))}
@@ -685,7 +669,7 @@ const StorageScreen = ({ navigation }) => {
                 <TouchableOpacity style={styles.secondaryBtn} onPress={handleBack}>
                     <Text style={styles.secondaryBtnText}>{t.back || "Back"}</Text>
                 </TouchableOpacity>
-                
+
                 <TouchableOpacity
                     style={[
                         styles.primaryBtn,
@@ -708,9 +692,11 @@ const StorageScreen = ({ navigation }) => {
                 <Text style={styles.sectionTitle}>
                     {t.storagesNearYou || "Cold Storages Near You"}
                 </Text>
-                <Text style={[styles.subtitleText, { color: '#666', fontSize: 14, fontStyle: 'italic', textAlign: 'center',
+                <Text style={[styles.subtitleText, {
+                    color: '#666', fontSize: 14, fontStyle: 'italic', textAlign: 'center',
                     flexWrap: 'wrap',
-                    width: '100%',marginTop: 4, marginBottom: 8 }]}>
+                    width: '100%', marginTop: 4, marginBottom: 8
+                }]}>
                     {t.basedOnYourCrops || "Based on your harvested crops"}
                 </Text>
                 <Text style={[styles.listSubtitle, { color: '#666' }]}>
@@ -735,17 +721,17 @@ const StorageScreen = ({ navigation }) => {
                     </TouchableOpacity>
                 </View>
             ) : (
-                <ScrollView 
+                <ScrollView
                     style={styles.listContainer}
                     showsVerticalScrollIndicator={false}
                     onMomentumScrollEnd={loadMore}
                 >
                     {storages.map((storage) => {
                         const status = getStorageStatus(storage);
-                        
+
                         // Get translated status text
                         const statusText = status.text;
-                        
+
                         return (
                             <TouchableOpacity
                                 key={storage.id || storage._id}
@@ -762,32 +748,32 @@ const StorageScreen = ({ navigation }) => {
                                             </View>
                                         )}
                                     </View>
-                                    
+
                                     <View style={styles.storageDistance}>
                                         <Ionicons name="location" size={14} color="#fff" />
                                         <Text style={styles.distanceText}>
                                             {translateDigits(storage.distance)} {t.km || "km"}
                                         </Text>
                                     </View>
-                                    
+
                                     <View style={styles.availabilityContainer}>
                                         <View style={styles.availabilityHeader}>
                                             <Ionicons name="cube-outline" size={16} color="#2E7D32" />
                                             <Text style={styles.availabilityTitle}>{t.availableSpace || "Available Space"}</Text>
                                         </View>
-                                        
+
                                         <View style={styles.availabilityBar}>
-                                            <View 
+                                            <View
                                                 style={[
-                                                    styles.availabilityFill, 
-                                                    { 
+                                                    styles.availabilityFill,
+                                                    {
                                                         width: `${storage.availablePercentage || 0}%`,
-                                                        backgroundColor: status.color 
+                                                        backgroundColor: status.color
                                                     }
-                                                ]} 
+                                                ]}
                                             />
                                         </View>
-                                        
+
                                         <View style={styles.availabilityDetails}>
                                             <View>
                                                 <Text style={styles.availabilityText}>
@@ -807,7 +793,7 @@ const StorageScreen = ({ navigation }) => {
                                             </View>
                                         </View>
                                     </View>
-                                    
+
                                     <View style={styles.storageCrops}>
                                         <Text style={styles.cropsLabel}>{t.stores || "Stores:"} </Text>
                                         <View style={styles.cropsList}>
@@ -823,7 +809,7 @@ const StorageScreen = ({ navigation }) => {
                                             )}
                                         </View>
                                     </View>
-                                    
+
                                     {storage.compatibility && (
                                         <View style={styles.compatibilityContainer}>
                                             <View style={styles.compatibilityBar}>
@@ -834,7 +820,7 @@ const StorageScreen = ({ navigation }) => {
                                             </Text>
                                         </View>
                                     )}
-                                    
+
                                     <Text style={styles.lastUpdated}>
                                         {t.updated || "Updated"}: {translateDigits(storage.lastUpdated || storage.updatedAt)}
                                     </Text>
@@ -842,14 +828,14 @@ const StorageScreen = ({ navigation }) => {
                             </TouchableOpacity>
                         );
                     })}
-                    
+
                     {loadingMore && (
                         <View style={styles.loadingMoreContainer}>
                             <ActivityIndicator size="small" color="#2E7D32" />
                             <Text style={styles.loadingMoreText}>{t.loadingMore || "Loading more..."}</Text>
                         </View>
                     )}
-                    
+
                     {storages.length === 0 && !loading && (
                         <View style={styles.emptyContainer}>
                             <Ionicons name="sad-outline" size={60} color="#fff" />
@@ -860,11 +846,11 @@ const StorageScreen = ({ navigation }) => {
                             </TouchableOpacity>
                         </View>
                     )}
-                    
+
                     <View style={styles.bottomPadding} />
                 </ScrollView>
             )}
-            
+
             {storages.length > 0 && (
                 <TouchableOpacity style={styles.bottomBackButton} onPress={handleBack}>
                     <Ionicons name="arrow-back" size={20} color="#2E7D32" />
@@ -881,19 +867,19 @@ const StorageScreen = ({ navigation }) => {
                 <ScrollView style={styles.detailsContainer} showsVerticalScrollIndicator={false}>
                     <View style={styles.detailsCard}>
                         <Text style={styles.detailsName}>{selectedStorage.name}</Text>
-                        
+
                         <View style={styles.detailedAvailabilityCard}>
                             <Text style={styles.detailedAvailabilityTitle}>{t.storageAvailability || "Storage Availability"}</Text>
-                            
+
                             {(() => {
                                 const status = getStorageStatus(selectedStorage);
-                                
+
                                 // Get translated status text
                                 const statusText = status.text;
-                                
+
                                 // Get translated status description
                                 const statusDesc = status.description;
-                                
+
                                 return (
                                     <>
                                         <View style={styles.detailedStatusRow}>
@@ -905,19 +891,19 @@ const StorageScreen = ({ navigation }) => {
                                             </View>
                                             <Text style={styles.detailedStatusDesc}>{statusDesc}</Text>
                                         </View>
-                                        
+
                                         <View style={styles.detailedAvailabilityBar}>
-                                            <View 
+                                            <View
                                                 style={[
-                                                    styles.detailedAvailabilityFill, 
-                                                    { 
+                                                    styles.detailedAvailabilityFill,
+                                                    {
                                                         width: `${selectedStorage.availablePercentage || 0}%`,
-                                                        backgroundColor: status.color 
+                                                        backgroundColor: status.color
                                                     }
-                                                ]} 
+                                                ]}
                                             />
                                         </View>
-                                        
+
                                         <View style={styles.detailedStatsGrid}>
                                             <View style={styles.detailedStatItem}>
                                                 <Text style={styles.detailedStatLabel}>{t.availableSpace || "Available Space"}</Text>
@@ -944,7 +930,7 @@ const StorageScreen = ({ navigation }) => {
                                                 </Text>
                                             </View>
                                         </View>
-                                        
+
                                         <Text style={styles.lastUpdatedDetail}>
                                             {t.lastUpdated || "Last Updated"}: {translateDigits(selectedStorage.lastUpdated || selectedStorage.updatedAt)}
                                         </Text>
@@ -952,28 +938,28 @@ const StorageScreen = ({ navigation }) => {
                                 );
                             })()}
                         </View>
-                        
+
                         <View style={styles.detailItem}>
                             <Ionicons name="person-outline" size={20} color="#2E7D32" />
                             <Text style={styles.detailText}>
                                 <Text style={styles.detailLabel}>{t.ownerLabel || "Owner:"}</Text> {selectedStorage.ownerName}
                             </Text>
                         </View>
-                        
+
                         <View style={styles.detailItem}>
                             <Ionicons name="call-outline" size={20} color="#2E7D32" />
                             <Text style={styles.detailText}>
                                 <Text style={styles.detailLabel}>{t.contactLabel || "Contact:"}</Text> {translateDigits(selectedStorage.phone)}
                             </Text>
                         </View>
-                        
+
                         <View style={styles.detailItem}>
                             <Ionicons name="navigate-outline" size={20} color="#2E7D32" />
                             <Text style={styles.detailText}>
                                 <Text style={styles.detailLabel}>{t.distanceLabel || "Distance:"}</Text> {translateDigits(selectedStorage.distance)} {t.km || "km"}
                             </Text>
                         </View>
-                        
+
                         {selectedStorage.address && (
                             <View style={styles.detailItem}>
                                 <Ionicons name="location-outline" size={20} color="#2E7D32" />
@@ -982,18 +968,18 @@ const StorageScreen = ({ navigation }) => {
                                 </Text>
                             </View>
                         )}
-                        
+
                         {selectedStorage.price && (
                             <View style={styles.detailItem}>
                                 <Ionicons name="cash-outline" size={20} color="#2E7D32" />
                                 <Text style={styles.detailText}>
-                                    <Text style={styles.detailLabel}>{t.priceLabel || "Price:"}</Text> 
-                                    ₹{translateDigits(extractNumber(selectedStorage.price))} 
+                                    <Text style={styles.detailLabel}>{t.priceLabel || "Price:"}</Text>
+                                    ₹{translateDigits(extractNumber(selectedStorage.price))}
                                     {t.perQuintal || "/quintal"} {t.perMonth || "/month"}
                                 </Text>
                             </View>
                         )}
-                        
+
                         <View style={styles.detailItem}>
                             <Ionicons name="leaf-outline" size={20} color="#2E7D32" />
                             <Text style={styles.detailText}>
@@ -1003,15 +989,15 @@ const StorageScreen = ({ navigation }) => {
                     </View>
 
                     <View style={styles.actionButtonsContainer}>
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             style={styles.callButton}
                             onPress={() => handleCall(selectedStorage.phone)}
                         >
                             <Ionicons name="call" size={20} color="#fff" />
                             <Text style={styles.callButtonText}>{t.contactOwner || "CONTACT OWNER"}</Text>
                         </TouchableOpacity>
-                        
-                        <TouchableOpacity 
+
+                        <TouchableOpacity
                             style={[styles.callButton, { backgroundColor: '#2196F3' }]}
                             onPress={() => handleNavigate()}
                         >
@@ -1026,7 +1012,7 @@ const StorageScreen = ({ navigation }) => {
                     <Text style={styles.loadingText}>{t.loadingDetails || "Loading storage details..."}</Text>
                 </View>
             )}
-            
+
             <TouchableOpacity style={styles.bottomBackButton} onPress={handleBack}>
                 <Ionicons name="arrow-back" size={20} color="#2E7D32" />
                 <Text style={styles.bottomBackText}>{t.backToList || "Back to List"}</Text>
@@ -1047,21 +1033,18 @@ const StorageScreen = ({ navigation }) => {
                 <View style={styles.container}>
                     {/* Step indicator */}
                     {step <= 2 && renderStepIndicator()}
-                    
-                    {/* SIMPLE SKIP BUTTON - Top right corner */}
-                    <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
-                        <Text style={styles.skipButtonText}>Skip Step ⏭</Text>
-                    </TouchableOpacity>
-                    
+
+
+
                     {/* Render current step */}
                     {step === 1 && renderCropSelection()}
                     {step === 2 && renderQuantityInput()}
                     {step === 3 && renderStorageList()}
                     {step === 4 && renderStorageDetails()}
-                    
+
                     {/* Speaker Button */}
                     <View style={styles.speakerFixedContainer}>
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             style={[
                                 styles.speakerButton,
                                 isMuted ? styles.mutedButton : styles.activeButton
@@ -1075,7 +1058,7 @@ const StorageScreen = ({ navigation }) => {
                                 color="#fff"
                             />
                         </TouchableOpacity>
-                        
+
                         {isSpeaking && !isMuted && (
                             <View style={styles.waveContainer}>
                                 <View style={[styles.wave, styles.wave1]} />
@@ -1152,7 +1135,7 @@ const additionalStyles = {
         marginTop: 6,
         textAlign: 'right',
     },
-    
+
     // Detailed availability styles
     detailedAvailabilityCard: {
         backgroundColor: '#f8f8f8',
@@ -1258,7 +1241,7 @@ const styles = StyleSheet.create({
         padding: 20,
         paddingBottom: 100,
     },
-    
+
     // Step Indicator
     stepIndicatorContainer: {
         flexDirection: 'row',
@@ -1292,29 +1275,9 @@ const styles = StyleSheet.create({
     activeStepLine: {
         backgroundColor: '#2E7D32',
     },
-    
-    // Skip button
-    skipButton: {
-        position: 'absolute',
-        top: 50,
-        right: 20,
-        zIndex: 1000,
-        backgroundColor: '#FF9800',
-        paddingVertical: 8,
-        paddingHorizontal: 16,
-        borderRadius: 20,
-        elevation: 5,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-    },
-    skipButtonText: {
-        color: '#fff',
-        fontSize: 14,
-        fontWeight: 'bold',
-    },
-    
+
+
+
     // Text styles
     questionText: {
         marginTop: 15,
@@ -1334,7 +1297,7 @@ const styles = StyleSheet.create({
         marginBottom: 20,
         opacity: 0.9,
     },
-    
+
     // Buttons
     primaryBtn: {
         backgroundColor: '#2E7D32',
@@ -1348,11 +1311,11 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.25,
         shadowRadius: 3.84,
-       
+
     },
     secondaryBtn: {
         backgroundColor: 'rgba(255, 152, 0,0.9)',
-        
+
         paddingVertical: 15,
         paddingHorizontal: 30,
         borderRadius: 30,
@@ -1361,9 +1324,9 @@ const styles = StyleSheet.create({
         borderColor: '#fff',
         flex: 1,
         marginRight: 8,
-        left:-10,
-         justifyContent: 'center',
-    alignItems: 'center',
+        left: -10,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     secondaryBtnText: {
         color: '#fff',
@@ -1387,25 +1350,25 @@ const styles = StyleSheet.create({
         marginTop: 10,
     },
     flexBtn: {
-         flex: 2.5, // Increased from 1.2 to make it larger than back button
-    backgroundColor: '#2E7D32',
-    paddingVertical: 15, // Increased from 16
-    paddingHorizontal: 30, // Increased horizontal padding
-    Height: 55,
-    width:95, // Increased from 55
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 35, // More rounded
-    elevation: 5, // Slightly more shadow
-    shadowColor: '#000',
-    borderRadius: 30,
-    borderWidth: 1,
-    borderColor: '#fff',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
+        flex: 2.5, // Increased from 1.2 to make it larger than back button
+        backgroundColor: '#2E7D32',
+        paddingVertical: 15, // Increased from 16
+        paddingHorizontal: 30, // Increased horizontal padding
+        Height: 55,
+        width: 95, // Increased from 55
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderRadius: 35, // More rounded
+        elevation: 5, // Slightly more shadow
+        shadowColor: '#000',
+        borderRadius: 30,
+        borderWidth: 1,
+        borderColor: '#fff',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
     },
-    
+
     // Crop Selection
     cropsScrollContainer: {
         maxHeight: 400,
@@ -1466,7 +1429,7 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#fff',
     },
-    
+
     // Selected chips
     selectedChipsContainer: {
         flexDirection: 'row',
@@ -1478,7 +1441,7 @@ const styles = StyleSheet.create({
         borderRadius: 12,
     },
     selectedChip: {
-       
+
         borderRadius: 16,
         paddingVertical: 6,
         paddingHorizontal: 12,
@@ -1489,7 +1452,7 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '500',
     },
-    
+
     // Quantity Input
     inputCard: {
         width: '100%',
@@ -1534,7 +1497,7 @@ const styles = StyleSheet.create({
         marginTop: 10,
         fontStyle: 'italic',
     },
-    
+
     // Unit Picker Modal
     modalOverlay: {
         flex: 1,
@@ -1584,7 +1547,7 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         color: '#666',
     },
-    
+
     // Storage List
     listHeader: {
         backgroundColor: 'rgba(255, 255, 255, 0.95)',
@@ -1800,7 +1763,7 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         marginLeft: 8,
     },
-    
+
     // Storage Details
     detailsContainer: {
         flex: 1,
@@ -1858,7 +1821,7 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         marginLeft: 8,
     },
-    
+
     // Speaker button
     speakerFixedContainer: {
         position: 'absolute',
@@ -1915,7 +1878,7 @@ const styles = StyleSheet.create({
     bottomPadding: {
         height: 80,
     },
-    
+
     // Merge additional styles
     ...additionalStyles
 });

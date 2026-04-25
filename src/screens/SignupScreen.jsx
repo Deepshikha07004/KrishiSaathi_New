@@ -37,7 +37,7 @@ const SignupScreen = ({ navigation }) => {
 
   const handleSignup = async () => {
     Keyboard.dismiss();
-    if (!fullName.trim()) return Alert.alert("Error", t.fullName);
+    if (!fullName.trim()) return Alert.alert(t.error ||"Error", t.fullName);
     const err = validatePhone(phoneNumber);
     if (err) return Alert.alert(t.error ||"Error", err);
 
@@ -88,10 +88,7 @@ const SignupScreen = ({ navigation }) => {
     }
   };
 
-  // TEMPORARY: Direct navigation without validation (KEEP THIS FOR TESTING)
-  const handleTemporarySkip = () => {
-    navigation.replace("Location");
-  };
+
 
   // Determine if current language is Bengali for font adjustments
   const isBengali = selectedLanguage === 'bn';
@@ -369,47 +366,7 @@ const SignupScreen = ({ navigation }) => {
                   </LinearGradient>
                 </TouchableOpacity>
 
-                {/* TEMPORARY SKIP BUTTON (KEEP FOR TESTING) */}
-                <TouchableOpacity
-                  onPress={handleTemporarySkip}
-                  style={{
-                    marginTop: 15,
-                    borderRadius: 50,
-                    overflow: "hidden",
-                    elevation: 4,
-                    shadowColor: "#000",
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.2,
-                    shadowRadius: 3,
-                    borderWidth: 2,
-                    borderColor: "#FFD700",
-                    backgroundColor: "#f0f0f0",
-                  }}
-                >
-                  <LinearGradient
-                    colors={["#e0e0e0", "#d0d0d0", "#c0c0c0"]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={{
-                      paddingVertical: 12,
-                      flexDirection: "row",
-                      justifyContent: "center",
-                      alignItems: "center",
-                    }}
-                  >
-                    <Text
-                      style={{
-                        color: "#333",
-                        fontWeight: "600",
-                        fontSize: 16,
-                        marginRight: 8,
-                      }}
-                    >
-                      TEMP: Skip to Location
-                    </Text>
-                    <Ionicons name="arrow-forward-circle" size={20} color="#666" />
-                  </LinearGradient>
-                </TouchableOpacity>
+
 
                 {/* LOGIN LINK */}
                 <TouchableOpacity
