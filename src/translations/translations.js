@@ -211,7 +211,7 @@ const translations = {
     retry: "Retry",
     noData: "No data available",
     selectLocation: "Select your farm location",
-    skip: "Skip to Home (Temporary)",
+
     sendingToServer: "Getting location details...",
     detectAutomatically: "Detect Automatically",
     enterManually: "Enter Manually",
@@ -330,7 +330,7 @@ const translations = {
     notProvided: "उपलब्ध नहीं",
     locationFound: "स्थान मिल गया",
     selectLocation: "अपने खेत का स्थान चुनें",
-    skip: "होम पर जाएं (अस्थायी)",
+
     sendingToServer: "स्थान विवरण प्राप्त हो रहे हैं...",
     detectAutomatically: "स्वचालित रूप से पता लगाएं",
     enterManually: "मैन्युअल रूप से दर्ज करें",
@@ -560,7 +560,7 @@ const translations = {
     notProvided: "প্রদান করা হয়নি",
     locationFound: "অবস্থান পাওয়া গেছে",
     selectLocation: "আপনার খামারের অবস্থান নির্বাচন করুন",
-    skip: "হোমে যান (অস্থায়ী)",
+
     sendingToServer: "অবস্থানের বিবরণ পাওয়া যাচ্ছে...",
     detectAutomatically: "স্বয়ংক্রিয়ভাবে সনাক্ত করুন",
     enterManually: "ম্যানুয়ালি লিখুন",
